@@ -236,7 +236,5 @@ export async function resetDatabase(): Promise<void> {
     await db.accounts.clear();
     await db.savingsGoals.clear();
     await db.categories.bulkAdd(DEFAULT_CATEGORIES);
-    const { DEFAULT_ACCOUNTS } = await import("./db");
-    await db.accounts.bulkAdd(DEFAULT_ACCOUNTS);
   });
 }

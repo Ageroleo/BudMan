@@ -59,85 +59,7 @@ export const DEFAULT_CATEGORIES: Omit<Category, "id">[] = [
   { name: "Salary", color: "#22c55e", icon: "Wallet" },
 ];
 
-export const DEFAULT_ACCOUNTS: Account[] = [
-  {
-    id: "seabank",
-    name: "SeaBank Debit",
-    type: "bank",
-    cardTheme: "seabank",
-    balance: 25450,
-    accountNumberMasked: "•••• 4892",
-    expiryDate: "05/29",
-    cardholderName: "JUAN DELA CRUZ",
-    createdAt: new Date(),
-  },
-  {
-    id: "gcash",
-    name: "GCash Wallet",
-    type: "wallet",
-    cardTheme: "gcash",
-    balance: 8320,
-    accountNumberMasked: "•••• 0918",
-    expiryDate: "08/28",
-    cardholderName: "JUAN DELA CRUZ",
-    createdAt: new Date(),
-  },
-  {
-    id: "bpi",
-    name: "BPI Debit",
-    type: "bank",
-    cardTheme: "bpi",
-    balance: 41200,
-    accountNumberMasked: "•••• 3140",
-    expiryDate: "03/30",
-    cardholderName: "JUAN DELA CRUZ",
-    createdAt: new Date(),
-  },
-  {
-    id: "maya",
-    name: "Maya Savings",
-    type: "wallet",
-    cardTheme: "maya",
-    balance: 15600,
-    accountNumberMasked: "•••• 7721",
-    expiryDate: "11/29",
-    cardholderName: "JUAN DELA CRUZ",
-    createdAt: new Date(),
-  },
-  {
-    id: "landbank",
-    name: "Landbank Debit",
-    type: "bank",
-    cardTheme: "landbank",
-    balance: 32000,
-    accountNumberMasked: "•••• 5519",
-    expiryDate: "09/27",
-    cardholderName: "JUAN DELA CRUZ",
-    createdAt: new Date(),
-  },
-  {
-    id: "shopee",
-    name: "ShopeePay",
-    type: "ecommerce",
-    cardTheme: "shopee",
-    balance: 4250,
-    accountNumberMasked: "•••• 6204",
-    expiryDate: "01/28",
-    cardholderName: "JUAN DELA CRUZ",
-    createdAt: new Date(),
-  },
-  {
-    id: "tiktok",
-    name: "TikTok Pay",
-    type: "ecommerce",
-    cardTheme: "tiktok",
-    balance: 1850,
-    accountNumberMasked: "•••• 9033",
-    expiryDate: "06/28",
-    cardholderName: "JUAN DELA CRUZ",
-    createdAt: new Date(),
-  },
-];
+export const DEFAULT_ACCOUNTS: Account[] = [];
 
 export class BudManDatabase extends Dexie {
   transactions!: Table<Transaction, number>;
@@ -183,13 +105,10 @@ export class BudManDatabase extends Dexie {
       categories: "++id, &name",
       accounts: "id, cardTheme, type",
       savingsGoals: "++id, name, targetAmount, currentAmount, createdAt",
-    }).upgrade(async (tx) => {
-      await tx.table("accounts").bulkPut(DEFAULT_ACCOUNTS);
     });
 
     this.on("populate", () => {
       this.categories.bulkAdd(DEFAULT_CATEGORIES);
-      this.accounts.bulkPut(DEFAULT_ACCOUNTS);
     });
   }
 }
@@ -207,26 +126,42 @@ export async function seedCategories(): Promise<void> {
   }
 }
 
+const PLACEHOLDER_ACCOUNT_IDS = [
+  "seabank",
+  "gcash",
+  "bpi",
+  "maya",
+  "landbank",
+  "shopee",
+  "tiktok",
+];
+
 /**
- * Seeder function to ensure default bank & wallet accounts exist in the database.
+ * Cleans up legacy default/placeholder accounts if present in existing IndexedDB storage.
  */
-export async function seedAccounts(): Promise<void> {
+export async function cleanupPlaceholderAccounts(): Promise<void> {
   try {
-    const isInitialized = typeof window !== "undefined" ? localStorage.getItem("budman_accounts_initialized") : null;
-    const count = await db.accounts.count();
-    if (count === 0 && !isInitialized) {
-      await db.accounts.bulkPut(DEFAULT_ACCOUNTS);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("budman_accounts_initialized", "true");
+    const cleanedKey = "budman_placeholder_accounts_cleaned_v2";
+    if (typeof window !== "undefined" && !localStorage.getItem(cleanedKey)) {
+      for (const id of PLACEHOLDER_ACCOUNT_IDS) {
+        const acc = await db.accounts.get(id);
+        if (acc && (!acc.cardholderName || acc.cardholderName === "JUAN DELA CRUZ")) {
+          await deleteAccount(id);
+        }
       }
-    } else if (count > 0 && !isInitialized) {
-      if (typeof window !== "undefined") {
-        localStorage.setItem("budman_accounts_initialized", "true");
-      }
+      localStorage.setItem(cleanedKey, "true");
+      localStorage.setItem("budman_accounts_initialized", "true");
     }
   } catch (err) {
-    console.error("Failed to seed accounts:", err);
+    console.error("Failed to clean up placeholder accounts:", err);
   }
+}
+
+/**
+ * Ensures placeholder accounts are not seeded and cleans up existing placeholders.
+ */
+export async function seedAccounts(): Promise<void> {
+  await cleanupPlaceholderAccounts();
 }
 
 /**
