@@ -73,9 +73,9 @@ export async function exportToCsv(): Promise<void> {
     if (cat.id !== undefined) categoryMap.set(cat.id, cat.name);
   });
 
-  const accountMap = new Map<number, string>();
+  const accountMap = new Map<string, string>();
   accounts.forEach((acc) => {
-    if (acc.id !== undefined) accountMap.set(acc.id, acc.name);
+    if (acc.id) accountMap.set(acc.id, acc.name);
   });
 
   // Sort by date descending
@@ -166,37 +166,38 @@ export async function importFromJson(
       }
     }
 
-    // 2. Merge accounts by name
+    // 2. Merge accounts by id or name
     const existingAccounts = await db.accounts.toArray();
-    const existingAccByName = new Map<string, number>();
+    const existingAccById = new Map<string, string>();
     existingAccounts.forEach((a) => {
-      if (a.id !== undefined) existingAccByName.set(a.name.toLowerCase(), a.id);
+      if (a.id) existingAccById.set(a.id, a.id);
     });
 
-    const accountOldToNewId = new Map<number, number>();
+    const accountOldToNewId = new Map<string, string>();
 
     for (const acc of newAccounts) {
-      const lowerName = acc.name.toLowerCase();
-      let targetId = existingAccByName.get(lowerName);
+      const accId = String(acc.id || "account");
+      let targetId = existingAccById.get(accId);
 
-      if (targetId === undefined) {
-        const { id, ...accWithoutId } = acc;
-        targetId = await db.accounts.add({
-          ...accWithoutId,
+      if (!targetId) {
+        await db.accounts.put({
+          ...acc,
+          id: accId,
           createdAt: acc.createdAt ? new Date(acc.createdAt) : new Date(),
-        } as Account);
-        existingAccByName.set(lowerName, targetId);
+        });
+        existingAccById.set(accId, accId);
+        targetId = accId;
       }
 
-      if (acc.id !== undefined && targetId !== undefined) {
-        accountOldToNewId.set(acc.id, targetId);
+      if (acc.id) {
+        accountOldToNewId.set(String(acc.id), targetId);
       }
     }
 
     // 3. Add transactions with remapped categoryIds and accountIds
     for (const tx of newTransactions) {
       const mappedCatId = categoryOldToNewId.get(tx.categoryId) ?? tx.categoryId;
-      const mappedAccId = tx.accountId ? accountOldToNewId.get(tx.accountId) ?? tx.accountId : undefined;
+      const mappedAccId = tx.accountId ? accountOldToNewId.get(String(tx.accountId)) ?? String(tx.accountId) : undefined;
       const { id, ...txWithoutId } = tx;
       await db.transactions.add({
         ...txWithoutId,
@@ -235,5 +236,7 @@ export async function resetDatabase(): Promise<void> {
     await db.accounts.clear();
     await db.savingsGoals.clear();
     await db.categories.bulkAdd(DEFAULT_CATEGORIES);
+    const { DEFAULT_ACCOUNTS } = await import("./db");
+    await db.accounts.bulkAdd(DEFAULT_ACCOUNTS);
   });
 }

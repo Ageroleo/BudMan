@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Eye, EyeOff, ArrowUpRight, ArrowDownLeft, Shield } from "lucide-react";
 import { useCurrency, formatCurrency } from "@/lib/format";
 
 interface BalanceCardProps {
@@ -42,19 +41,19 @@ export function BalanceCard({
   const monthShort = currentMonthLabel.split(" ")[0] || "Month";
 
   return (
-    <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-b from-[#18181d] via-[#121215] to-[#0c0c0e] border border-white/[0.08] shadow-2xl p-6 sm:p-7 fintech-card-glow transition-all">
+    <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#2b3c2e] via-[#233325] to-[#1c291e] text-[#f0f6ef] border border-[#3d5341] shadow-lg shadow-[#1e2920]/25 p-6 sm:p-7 transition-all">
       {/* Background ambient lighting */}
-      <div className="absolute -top-16 -right-16 w-48 h-48 bg-emerald-500/12 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -top-16 -right-16 w-48 h-48 bg-[#6b8c65]/15 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-[#354938]/20 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative z-10 flex flex-col justify-between h-full space-y-6">
-        {/* Header row: Label + Privacy Eye toggle */}
+        {/* Header row: Label + Privacy text toggle */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-              Total Balance
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#c9dec8]">
+              {accountName ? `${accountName} Balance` : "Total Balance"}
             </span>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#82a47b] animate-pulse" />
           </div>
 
           <button
@@ -62,26 +61,16 @@ export function BalanceCard({
             onClick={toggleMask}
             aria-label={isMasked ? "Show Balance" : "Hide Balance"}
             title={isMasked ? "Reveal balance" : "Mask balance for privacy"}
-            className="flex items-center gap-1.5 py-1 px-2.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-zinc-400 hover:text-zinc-200 transition-all text-xs"
+            className="flex items-center gap-1.5 py-1 px-3 rounded-full bg-[#354938] hover:bg-[#3d5341] border border-[#4a634e] text-[#f3f7f2] transition-all text-xs font-semibold"
           >
-            {isMasked ? (
-              <>
-                <EyeOff className="w-3.5 h-3.5 text-zinc-400" />
-                <span className="text-[10px] font-medium">Hidden</span>
-              </>
-            ) : (
-              <>
-                <Eye className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-[10px] font-medium">Visible</span>
-              </>
-            )}
+            <span>{isMasked ? "Show" : "Hide"}</span>
           </button>
         </div>
 
         {/* Big Display Figure */}
         <div className="py-1">
           <div
-            className={`text-4xl sm:text-5xl font-black tracking-tight text-white tabular-nums transition-all ${
+            className={`text-4xl sm:text-5xl font-black tracking-tight text-[#f3f7f2] tabular-nums transition-all ${
               isMasked ? "privacy-blur select-none" : ""
             }`}
           >
@@ -90,18 +79,18 @@ export function BalanceCard({
         </div>
 
         {/* Two Pill Badges: Income & Spent */}
-        <div className="pt-4 border-t border-white/[0.06] grid grid-cols-2 gap-3">
+        <div className="pt-4 border-t border-[#3d5341]/60 grid grid-cols-2 gap-3">
           {/* Income Pill */}
-          <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:border-emerald-500/20 transition-colors">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 text-emerald-400">
-              <ArrowUpRight className="w-4 h-4 stroke-[2.5]" />
+          <div className="flex items-center gap-3 p-3 rounded-2xl bg-[#354938] text-[#c9dec8] border border-[#425a46] hover:border-[#526f57] transition-colors">
+            <div className="w-8 h-8 rounded-xl bg-[#283c2c] border border-[#425a46] flex items-center justify-center shrink-0 text-[#82a47b] font-bold text-sm">
+              +
             </div>
             <div className="min-w-0">
-              <span className="text-[11px] font-medium text-zinc-400 block truncate">
+              <span className="text-[11px] font-medium text-[#c9dec8] block truncate">
                 Income ({monthShort})
               </span>
               <span
-                className={`text-sm font-bold text-emerald-400 tabular-nums block truncate ${
+                className={`text-sm font-bold text-[#9ece98] tabular-nums block truncate ${
                   isMasked ? "privacy-blur select-none" : ""
                 }`}
               >
@@ -113,16 +102,16 @@ export function BalanceCard({
           </div>
 
           {/* Spent Pill */}
-          <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:border-rose-500/20 transition-colors">
-            <div className="w-8 h-8 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0 text-rose-400">
-              <ArrowDownLeft className="w-4 h-4 stroke-[2.5]" />
+          <div className="flex items-center gap-3 p-3 rounded-2xl bg-[#354938] text-[#c9dec8] border border-[#425a46] hover:border-[#526f57] transition-colors">
+            <div className="w-8 h-8 rounded-xl bg-[#3a2c2c] border border-[#524040] flex items-center justify-center shrink-0 text-[#e89b92] font-bold text-sm">
+              -
             </div>
             <div className="min-w-0">
-              <span className="text-[11px] font-medium text-zinc-400 block truncate">
+              <span className="text-[11px] font-medium text-[#c9dec8] block truncate">
                 Spent ({monthShort})
               </span>
               <span
-                className={`text-sm font-bold text-rose-400 tabular-nums block truncate ${
+                className={`text-sm font-bold text-[#e89b92] tabular-nums block truncate ${
                   isMasked ? "privacy-blur select-none" : ""
                 }`}
               >

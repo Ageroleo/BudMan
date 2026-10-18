@@ -2,13 +2,11 @@
 
 import React, { useState, useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Trash2, ReceiptText, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { db, type Category, type Account, type Transaction } from "@/lib/db";
 import { useCurrency, formatCurrency } from "@/lib/format";
-import { CategoryIcon } from "./CategoryIcon";
 
 interface TransactionListProps {
-  filterAccountId?: number | null;
+  filterAccountId?: string | null;
 }
 
 export function TransactionList({ filterAccountId }: TransactionListProps) {
@@ -27,9 +25,9 @@ export function TransactionList({ filterAccountId }: TransactionListProps) {
       if (cat.id !== undefined) categoryMap.set(cat.id, cat);
     });
 
-    const accountMap = new Map<number, Account>();
+    const accountMap = new Map<string, Account>();
     accounts.forEach((acc) => {
-      if (acc.id !== undefined) accountMap.set(acc.id, acc);
+      if (acc.id) accountMap.set(acc.id, acc);
     });
 
     // Filter by account if specified
@@ -67,11 +65,6 @@ export function TransactionList({ filterAccountId }: TransactionListProps) {
   const groupedTransactions = useMemo(() => {
     if (!data?.transactions) return [];
 
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const yesterdayDate = new Date();
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterdayStr = yesterdayDate.toISOString().slice(0, 10);
-
     const groups: {
       dateKey: string;
       label: string;
@@ -79,45 +72,49 @@ export function TransactionList({ filterAccountId }: TransactionListProps) {
       items: Transaction[];
     }[] = [];
 
-    const groupMap = new Map<string, Transaction[]>();
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
 
     data.transactions.forEach((tx) => {
-      const list = groupMap.get(tx.date) || [];
-      list.push(tx);
-      groupMap.set(tx.date, list);
-    });
+      const txDate = tx.date;
+      let existingGroup = groups.find((g) => g.dateKey === txDate);
 
-    groupMap.forEach((items, dateKey) => {
-      let label = dateKey;
-      if (dateKey === todayStr) {
-        label = "Today";
-      } else if (dateKey === yesterdayStr) {
-        label = "Yesterday";
-      } else {
-        try {
-          const [year, month, day] = dateKey.split("-").map(Number);
-          const d = new Date(year, month - 1, day);
-          label = d.toLocaleDateString("en-US", {
-            weekday: "short",
-            month: "short",
-            day: "numeric",
-          });
-        } catch {
-          label = dateKey;
+      if (!existingGroup) {
+        let label = txDate;
+        if (txDate === todayStr) {
+          label = "Today";
+        } else if (txDate === yesterdayStr) {
+          label = "Yesterday";
+        } else {
+          try {
+            const d = new Date(txDate + "T00:00:00");
+            label = d.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            });
+          } catch {
+            label = txDate;
+          }
         }
+
+        existingGroup = {
+          dateKey: txDate,
+          label,
+          totalDayAmount: 0,
+          items: [],
+        };
+        groups.push(existingGroup);
       }
 
-      // Net daily change
-      const totalDayAmount = items.reduce((acc, tx) => {
-        return tx.type === "income" ? acc + tx.amount : acc - tx.amount;
-      }, 0);
-
-      groups.push({
-        dateKey,
-        label,
-        totalDayAmount,
-        items,
-      });
+      existingGroup.items.push(tx);
+      if (tx.type === "income") {
+        existingGroup.totalDayAmount += tx.amount;
+      } else {
+        existingGroup.totalDayAmount -= tx.amount;
+      }
     });
 
     return groups;
@@ -125,9 +122,13 @@ export function TransactionList({ filterAccountId }: TransactionListProps) {
 
   if (!data) {
     return (
-      <div className="p-8 text-center bg-[#121215] rounded-3xl border border-white/[0.08] animate-pulse">
-        <div className="w-8 h-8 mx-auto rounded-full bg-zinc-800 mb-2" />
-        <div className="h-4 w-32 bg-zinc-800 rounded mx-auto" />
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="h-16 rounded-2xl bg-[#dbe8da]/70 border border-[#c1d5bf] animate-pulse"
+          />
+        ))}
       </div>
     );
   }
@@ -136,12 +137,9 @@ export function TransactionList({ filterAccountId }: TransactionListProps) {
 
   if (transactions.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-10 text-center rounded-[28px] bg-[#121215] border border-white/[0.08] shadow-xl">
-        <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-3.5 text-emerald-400">
-          <ReceiptText className="w-8 h-8 stroke-[1.75]" />
-        </div>
-        <h3 className="text-base font-bold text-zinc-100 mb-1">No Transactions Recorded</h3>
-        <p className="text-xs text-zinc-400 max-w-xs mb-4 leading-relaxed">
+      <div className="flex flex-col items-center justify-center p-10 text-center rounded-[28px] bg-[#e2ede1] border border-[#c4d7c2] shadow-sm">
+        <h3 className="text-base font-bold text-[#213123] mb-1">No Transactions Recorded</h3>
+        <p className="text-xs text-[#4f6852] max-w-xs mb-4 leading-relaxed">
           {filterAccountId
             ? "No activity recorded for this specific account yet."
             : "Tap the + button below to log your first income or expense record."}
@@ -155,11 +153,11 @@ export function TransactionList({ filterAccountId }: TransactionListProps) {
       {groupedTransactions.map((group) => (
         <div key={group.dateKey} className="space-y-2">
           {/* Sticky Section Header */}
-          <div className="sticky top-0 z-10 py-1.5 px-3 rounded-xl bg-zinc-950/90 backdrop-blur-md border border-white/[0.05] text-xs font-semibold text-zinc-400 flex items-center justify-between shadow-sm">
-            <span className="text-zinc-200 font-bold tracking-tight">{group.label}</span>
+          <div className="sticky top-0 z-10 py-1.5 px-3 rounded-xl bg-[#e2ede1]/95 backdrop-blur-md border border-[#c4d7c2] text-xs font-semibold text-[#4f6852] flex items-center justify-between shadow-xs">
+            <span className="text-[#213123] font-bold tracking-tight">{group.label}</span>
             <span
               className={`text-[11px] font-bold tabular-nums ${
-                group.totalDayAmount >= 0 ? "text-emerald-400" : "text-rose-400"
+                group.totalDayAmount >= 0 ? "text-[#1f3d23]" : "text-[#b34033]"
               }`}
             >
               {group.totalDayAmount >= 0 ? "+" : ""}
@@ -178,57 +176,55 @@ export function TransactionList({ filterAccountId }: TransactionListProps) {
               return (
                 <div
                   key={tx.id}
-                  className={`group relative flex items-center justify-between p-3.5 bg-[#121215] hover:bg-[#18181d] border border-white/[0.06] hover:border-white/[0.12] rounded-2xl transition-all shadow-sm ${
+                  className={`group relative flex items-center justify-between p-3.5 bg-[#e2ede1] hover:bg-[#d9e7d8] border border-[#c8dbc6] rounded-2xl transition-all shadow-sm ${
                     isDeleting ? "opacity-40 scale-95" : ""
                   }`}
                 >
-                  {/* Left: Category Icon & Info */}
+                  {/* Left: Direction indicator & Info */}
                   <div className="flex items-center gap-3 min-w-0 pr-3">
                     <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 border"
-                      style={{
-                        backgroundColor: category?.color ? `${category.color}18` : "#18181c",
-                        borderColor: category?.color ? `${category.color}35` : "#27272a",
-                        color: category?.color || "#a1a1aa",
-                      }}
+                      className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 border font-black text-xs ${
+                        isExpense
+                          ? "bg-[#eadad8] border-[#ddc3c0] text-[#8e3228]"
+                          : "bg-[#cde0cb] border-[#b8d2b6] text-[#263828]"
+                      }`}
                     >
-                      <CategoryIcon name={category?.icon || "Tag"} className="w-4 h-4" />
+                      {isExpense ? "-" : "+"}
                     </div>
 
                     <div className="min-w-0">
-                      <div className="font-semibold text-sm text-zinc-100 truncate">
+                      <div className="font-semibold text-sm text-[#213123] truncate">
                         {tx.note || category?.name || "Transaction"}
                       </div>
 
-                      <div className="flex items-center gap-1.5 mt-0.5 text-xs text-zinc-500 flex-wrap">
-                        <span className="font-medium text-zinc-400 truncate max-w-[100px]">
+                      <div className="flex items-center gap-1.5 mt-0.5 text-xs text-[#5c755f] flex-wrap">
+                        <span className="font-medium text-[#4f6852] truncate max-w-[100px]">
                           {category?.name || "Uncategorized"}
                         </span>
 
                         {/* Account Badge */}
                         {account && (
                           <>
-                            <span className="text-zinc-700">•</span>
+                            <span className="text-[#8ba78e]">•</span>
                             <span
-                              className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-md text-[10px] font-semibold border"
+                              className="inline-flex items-center px-1.5 py-0.2 rounded-md text-[10px] font-semibold border"
                               style={{
-                                color: account.color,
-                                backgroundColor: `${account.color}15`,
-                                borderColor: `${account.color}30`,
+                                color: "#213123",
+                                backgroundColor: "#d0e3cf",
+                                borderColor: "#b8d2b6",
                               }}
                             >
-                              <CategoryIcon name={account.icon} className="w-2.5 h-2.5" />
                               <span className="truncate max-w-[80px]">{account.name}</span>
                             </span>
                           </>
                         )}
 
-                        <span className="text-zinc-700">•</span>
+                        <span className="text-[#8ba78e]">•</span>
                         <span
                           className={`text-[10px] font-semibold uppercase px-1.5 py-0.2 rounded ${
                             isExpense
-                              ? "text-rose-400 bg-rose-500/10"
-                              : "text-emerald-400 bg-emerald-500/10"
+                              ? "text-[#b34033] bg-[#b34033]/10"
+                              : "text-[#1f3d23] bg-[#1f3d23]/10"
                           }`}
                         >
                           {isExpense ? "Expense" : "Income"}
@@ -241,7 +237,7 @@ export function TransactionList({ filterAccountId }: TransactionListProps) {
                   <div className="flex items-center gap-2.5 shrink-0">
                     <span
                       className={`text-sm sm:text-base font-extrabold tabular-nums tracking-tight ${
-                        isExpense ? "text-rose-400" : "text-emerald-400"
+                        isExpense ? "text-[#b34033]" : "text-[#1f3d23]"
                       }`}
                     >
                       {isExpense ? "-" : "+"}
@@ -253,9 +249,9 @@ export function TransactionList({ filterAccountId }: TransactionListProps) {
                       onClick={() => handleDelete(tx.id)}
                       disabled={isDeleting}
                       aria-label="Delete transaction"
-                      className="p-1.5 rounded-xl text-zinc-600 hover:text-rose-400 hover:bg-rose-500/10 active:scale-95 transition-all opacity-80 group-hover:opacity-100"
+                      className="px-2 py-1 rounded-lg text-xs font-semibold text-[#7d9680] hover:text-[#b34033] hover:bg-[#b34033]/10 active:scale-95 transition-all opacity-80 group-hover:opacity-100"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      ✕
                     </button>
                   </div>
                 </div>

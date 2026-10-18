@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Wifi, WifiOff } from "lucide-react";
 
 export function OfflineBadge() {
   const [isOnline, setIsOnline] = useState<boolean>(true);
@@ -33,22 +32,16 @@ export function OfflineBadge() {
       title={isOnline ? "Online" : "Offline • Saving locally"}
       className={`inline-flex items-center gap-1.5 text-xs rounded-full border transition-all duration-300 ${
         isOnline
-          ? "px-2 py-1 bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 shadow-sm"
-          : "px-2.5 py-1 bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-300 shadow-sm shadow-amber-500/10"
+          ? "px-2.5 py-1 bg-[#e2ede1] dark:bg-[#1f2d21] border-[#c4d7c2] dark:border-[#384e3b] text-[#213123] dark:text-[#d0e2cf] shadow-xs"
+          : "px-2.5 py-1 bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300 shadow-xs shadow-amber-500/10"
       }`}
     >
-      {isOnline ? (
-        <>
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <Wifi className="w-3.5 h-3.5 text-emerald-400" />
-        </>
-      ) : (
-        <>
-          <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-          <WifiOff className="w-3.5 h-3.5 text-amber-400" />
-          <span className="font-semibold">Offline • Saving locally</span>
-        </>
-      )}
+      <span
+        className={`w-2 h-2 rounded-full ${
+          isOnline ? "bg-[#54734e] animate-pulse" : "bg-amber-400 animate-ping"
+        }`}
+      />
+      {!isOnline && <span className="font-semibold text-[11px]">Offline</span>}
     </div>
   );
 }

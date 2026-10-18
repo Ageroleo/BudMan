@@ -8,7 +8,7 @@ export const THEME_STORAGE_KEY = "budman_theme";
 export const THEME_CHANGE_EVENT = "budman-theme-changed";
 
 export function getStoredTheme(): ThemeMode {
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === "undefined") return "light";
   try {
     const val = localStorage.getItem(THEME_STORAGE_KEY);
     if (val === "light" || val === "dark" || val === "system") {
@@ -17,11 +17,11 @@ export function getStoredTheme(): ThemeMode {
   } catch {
     // ignore
   }
-  return "dark"; // default theme is dark
+  return "light"; // default theme is matcha green
 }
 
 export function getSystemTheme(): "light" | "dark" {
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === "undefined") return "light";
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
@@ -57,7 +57,7 @@ export function applyTheme(mode: ThemeMode) {
     metaTheme.setAttribute("name", "theme-color");
     document.head.appendChild(metaTheme);
   }
-  metaTheme.setAttribute("content", resolved === "dark" ? "#09090b" : "#f8fafc");
+  metaTheme.setAttribute("content", resolved === "dark" ? "#162218" : "#edf4eb");
 }
 
 export function setStoredTheme(mode: ThemeMode) {

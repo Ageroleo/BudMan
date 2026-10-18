@@ -2,27 +2,6 @@
 
 import React, { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import {
-  Target,
-  PiggyBank,
-  Plus,
-  Pencil,
-  Trash2,
-  Calendar,
-  Clock,
-  Sparkles,
-  ArrowUpRight,
-  X,
-  Check,
-  CheckCircle2,
-  Plane,
-  Laptop,
-  Home,
-  Car,
-  Gift,
-  ShieldCheck,
-  Coins,
-} from "lucide-react";
 import { db, type SavingsGoal, type SavingFrequency } from "@/lib/db";
 import { useCurrency, formatCurrency } from "@/lib/format";
 
@@ -36,49 +15,35 @@ const GOAL_COLORS = [
   "#f43f5e", // Rose
 ];
 
-const GOAL_ICONS: Record<string, React.ElementType> = {
-  Target,
-  PiggyBank,
-  Plane,
-  Laptop,
-  Home,
-  Car,
-  Gift,
-  ShieldCheck,
-  Coins,
-};
-
 export function SavingsView() {
   const currency = useCurrency();
-
-  // Modal states
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
 
-  // Form states
+  // Form states for Goal creation / edit
   const [name, setName] = useState("");
   const [targetAmount, setTargetAmount] = useState("");
   const [currentAmount, setCurrentAmount] = useState("0");
-  const [durationMonths, setDurationMonths] = useState<number>(6);
+  const [durationMonths, setDurationMonths] = useState(6);
   const [frequency, setFrequency] = useState<SavingFrequency>("monthly");
   const [color, setColor] = useState(GOAL_COLORS[0]);
-  const [icon, setIcon] = useState("Target");
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Deposit modal state
+  // Quick Deposit modal state
   const [depositGoalId, setDepositGoalId] = useState<number | null>(null);
   const [depositAmount, setDepositAmount] = useState("");
   const [depositError, setDepositError] = useState<string | null>(null);
 
-  // Live Query goals
+  // Live Query for all goals
   const goals = useLiveQuery(async () => {
     return await db.savingsGoals.toArray();
   }, []);
 
-  const totalSaved = goals?.reduce((sum, g) => sum + (g.currentAmount || 0), 0) ?? 0;
+  // Compute aggregate totals
   const totalTarget = goals?.reduce((sum, g) => sum + (g.targetAmount || 0), 0) ?? 0;
-  const overallPercentage = totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0;
+  const totalSaved = goals?.reduce((sum, g) => sum + (g.currentAmount || 0), 0) ?? 0;
+  const overallProgress = totalTarget > 0 ? Math.min(100, (totalSaved / totalTarget) * 100) : 0;
 
   // Open Create Modal
   const handleOpenCreate = () => {
@@ -89,7 +54,6 @@ export function SavingsView() {
     setDurationMonths(6);
     setFrequency("monthly");
     setColor(GOAL_COLORS[0]);
-    setIcon("Target");
     setFormError(null);
     setIsCreateOpen(true);
   };
@@ -103,16 +67,15 @@ export function SavingsView() {
     setDurationMonths(goal.durationMonths || 6);
     setFrequency(goal.frequency || "monthly");
     setColor(goal.color || GOAL_COLORS[0]);
-    setIcon(goal.icon || "Target");
     setFormError(null);
     setIsCreateOpen(true);
   };
 
-  // Submit Goal Form (Create / Update)
+  // Submit Goal form (Create or Update)
   const handleSubmitGoal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setFormError("Please enter a goal name");
+      setFormError("Please enter a goal title");
       return;
     }
 
@@ -123,21 +86,13 @@ export function SavingsView() {
     }
 
     const parsedCurrent = parseFloat(currentAmount) || 0;
-    if (parsedCurrent < 0) {
-      setFormError("Current saved amount cannot be negative");
-      return;
-    }
-
-    const months = Number(durationMonths);
-    if (isNaN(months) || months < 1) {
-      setFormError("Duration must be at least 1 month");
-      return;
-    }
+    const months = Math.max(1, Number(durationMonths) || 1);
 
     setIsSaving(true);
     setFormError(null);
+
     try {
-      if (editingGoal?.id) {
+      if (editingGoal && editingGoal.id !== undefined) {
         await db.savingsGoals.update(editingGoal.id, {
           name: name.trim(),
           targetAmount: parsedTarget,
@@ -145,7 +100,6 @@ export function SavingsView() {
           durationMonths: months,
           frequency,
           color,
-          icon,
         });
       } else {
         await db.savingsGoals.add({
@@ -155,7 +109,6 @@ export function SavingsView() {
           durationMonths: months,
           frequency,
           color,
-          icon,
           createdAt: new Date(),
         });
       }
@@ -216,230 +169,220 @@ export function SavingsView() {
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Header Overview Card */}
       <section aria-label="Savings Goals Overview">
-        <div className="relative p-5 sm:p-6 bg-[#121215] border border-white/[0.08] rounded-[28px] shadow-xl overflow-hidden">
+        <div className="relative p-5 sm:p-6 bg-[#e2ede1] dark:bg-[#1c291e] border border-[#c4d7c2] dark:border-[#384e3b] rounded-[28px] shadow-sm overflow-hidden">
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 p-[1.5px] shadow-lg shadow-emerald-500/20">
-                <div className="w-full h-full bg-[#09090b] rounded-[14px] flex items-center justify-center">
-                  <PiggyBank className="w-4 h-4 text-emerald-400" />
-                </div>
-              </div>
-              <div>
-                <h2 className="text-base font-extrabold text-white tracking-tight flex items-center gap-1.5">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-extrabold text-[#213123] dark:text-[#f0f6ef] tracking-tight">
                   Savings Goals
-                  <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                    {goals?.length ?? 0} active
-                  </span>
                 </h2>
-                <p className="text-[11px] text-zinc-400 font-medium">
-                  Smart timeline savings calculator
-                </p>
+                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-[#d6e5d4] text-[#213123] border border-[#c4d7c2] dark:bg-[#2e4331] dark:text-[#c9dec8] dark:border-[#3d5341]">
+                  {goals?.length ?? 0} active
+                </span>
               </div>
+              <p className="text-[11px] text-[#5e7d59] dark:text-[#9bb897] font-medium mt-0.5">
+                Timeline savings planner & calculator
+              </p>
             </div>
 
             <button
               type="button"
               onClick={handleOpenCreate}
-              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-zinc-950 text-xs font-bold flex items-center gap-1 shadow-md shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all"
+              className="px-3.5 py-1.5 rounded-xl bg-[#54734e] hover:bg-[#466141] text-white text-xs font-bold shadow-md shadow-[#54734e]/30 hover:scale-105 active:scale-95 transition-all"
             >
-              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>New Goal</span>
+              + New Goal
             </button>
           </div>
 
           {/* Aggregate Progress Bar */}
-          <div className="w-full h-2.5 bg-zinc-950 rounded-full overflow-hidden border border-zinc-800/80 p-0.5 mb-3">
+          <div className="w-full h-2.5 bg-[#d3e3d1] dark:bg-[#162218] rounded-full overflow-hidden border border-[#c4d7c2] dark:border-[#384e3b] p-0.5 mb-3">
             <div
-              className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-emerald-500 to-teal-400"
-              style={{ width: `${Math.min(overallPercentage, 100)}%` }}
+              className="h-full bg-[#54734e] rounded-full transition-all duration-500"
+              style={{ width: `${overallProgress}%` }}
             />
           </div>
 
-          {/* Quick Metrics */}
-          <div className="grid grid-cols-3 gap-2 pt-1 border-t border-zinc-800/60 text-center">
-            <div>
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Total Saved</span>
-              <span className="text-xs font-bold text-emerald-400 tabular-nums">
+          {/* Key Stat Cards */}
+          <div className="grid grid-cols-3 gap-2 pt-1 text-center">
+            <div className="p-2.5 rounded-2xl bg-[#dbe8da] dark:bg-[#263728] border border-[#c1d5bf] dark:border-[#384e3b]">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#5e7d59] dark:text-[#9bb897] block">
+                Total Saved
+              </span>
+              <span className="text-xs sm:text-sm font-black text-[#1f3d23] dark:text-[#82a47b] tabular-nums">
                 {formatCurrency(totalSaved, currency, { maximumFractionDigits: 0 })}
               </span>
             </div>
-            <div>
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Target Pool</span>
-              <span className="text-xs font-bold text-zinc-200 tabular-nums">
+            <div className="p-2.5 rounded-2xl bg-[#dbe8da] dark:bg-[#263728] border border-[#c1d5bf] dark:border-[#384e3b]">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#5e7d59] dark:text-[#9bb897] block">
+                Target Total
+              </span>
+              <span className="text-xs sm:text-sm font-black text-[#213123] dark:text-[#f0f6ef] tabular-nums">
                 {formatCurrency(totalTarget, currency, { maximumFractionDigits: 0 })}
               </span>
             </div>
-            <div>
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Overall</span>
-              <span className="text-xs font-bold text-zinc-300 tabular-nums">
-                {overallPercentage.toFixed(0)}%
+            <div className="p-2.5 rounded-2xl bg-[#dbe8da] dark:bg-[#263728] border border-[#c1d5bf] dark:border-[#384e3b]">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#5e7d59] dark:text-[#9bb897] block">
+                Completed
+              </span>
+              <span className="text-xs sm:text-sm font-black text-[#54734e] dark:text-[#a3c99f] tabular-nums">
+                {overallProgress.toFixed(0)}%
               </span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Goals List */}
-      <section aria-label="Savings Goals List" className="space-y-3">
+      {/* Goal Cards List */}
+      <section className="space-y-3.5" aria-label="Individual Savings Goals">
         {goals && goals.length > 0 ? (
           goals.map((goal) => {
-            const IconComponent = GOAL_ICONS[goal.icon || "Target"] || Target;
-            const remaining = Math.max(0, goal.targetAmount - (goal.currentAmount || 0));
-            const percentage =
-              goal.targetAmount > 0 ? ((goal.currentAmount || 0) / goal.targetAmount) * 100 : 0;
-            const isCompleted = (goal.currentAmount || 0) >= goal.targetAmount;
+            const current = goal.currentAmount || 0;
+            const target = goal.targetAmount || 1;
+            const percentage = Math.min(100, (current / target) * 100);
+            const remaining = Math.max(0, target - current);
+            const months = Math.max(1, goal.durationMonths || 1);
+            const isCompleted = current >= target;
 
             // Calculations per day, week, month
-            const months = Math.max(1, goal.durationMonths || 1);
             const perMonth = remaining / months;
             const perWeek = remaining / ((months * 52) / 12);
             const perDay = remaining / (months * 30.417);
 
-            // Highlighted plan text based on user's frequency preference
-            let planText = "";
-            let planAmount = 0;
+            let planAmount = perMonth;
             if (goal.frequency === "daily") {
-              planText = "per day";
               planAmount = perDay;
             } else if (goal.frequency === "weekly") {
-              planText = "per week";
               planAmount = perWeek;
             } else {
-              planText = "per month";
               planAmount = perMonth;
             }
+
+            const initialLetter = (goal.name || "G").charAt(0).toUpperCase();
 
             return (
               <div
                 key={goal.id}
-                className="p-5 bg-[#121215] border border-white/[0.08] hover:border-white/[0.12] rounded-3xl transition-all shadow-md space-y-4"
+                className="p-5 bg-[#e2ede1] dark:bg-[#1c291e] border border-[#c8dbc6] dark:border-[#384e3b] hover:bg-[#d9e7d8] dark:hover:bg-[#223325] rounded-3xl transition-all shadow-sm space-y-4"
               >
-                {/* Card Top: Icon, Name, Target, & Menu */}
+                {/* Card Top: Initials, Name, Target, & Menu */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <div
-                      className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border shadow-sm"
+                      className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border font-extrabold text-sm shadow-sm"
                       style={{
                         backgroundColor: `${goal.color}20`,
                         borderColor: `${goal.color}40`,
                         color: goal.color,
                       }}
                     >
-                      <IconComponent className="w-5 h-5" />
+                      {initialLetter}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-bold text-zinc-100 truncate">{goal.name}</h3>
+                        <h3 className="text-sm font-bold text-[#213123] dark:text-[#f0f6ef] truncate">{goal.name}</h3>
                         {isCompleted && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                            Completed 🎉
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#cde0cb] text-[#213123] border border-[#b8d2b6] dark:bg-[#263728] dark:text-[#c9dec8]">
+                            Completed
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-[11px] text-zinc-400 mt-0.5">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-zinc-500" />
+                      <div className="flex items-center gap-2 text-[11px] text-[#5e7d59] dark:text-[#9bb897] mt-0.5">
+                        <span>
                           {goal.durationMonths} {goal.durationMonths === 1 ? "month" : "months"} plan
                         </span>
                         <span>•</span>
-                        <span className="capitalize text-zinc-400">Save {goal.frequency}</span>
+                        <span className="capitalize text-[#5e7d59] dark:text-[#9bb897]">Save {goal.frequency}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Actions: Edit & Delete */}
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
                       onClick={() => handleOpenEdit(goal)}
-                      className="p-1.5 rounded-xl text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.06] transition-colors"
-                      title="Edit Goal"
+                      className="px-2 py-1 rounded-lg text-xs font-semibold text-[#5e7d59] hover:text-[#213123] hover:bg-[#d6e5d4] dark:hover:bg-[#263728] transition-colors"
                     >
-                      <Pencil className="w-3.5 h-3.5" />
+                      Edit
                     </button>
                     {goal.id && (
                       <button
                         type="button"
                         onClick={() => handleDeleteGoal(goal.id as number)}
-                        className="p-1.5 rounded-xl text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
-                        title="Delete Goal"
+                        className="px-2 py-1 rounded-lg text-xs font-semibold text-[#b34033] hover:bg-[#b34033]/10 transition-colors"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* Progress Bar & Saved Figures */}
-                <div>
-                  <div className="flex items-center justify-between text-xs mb-1.5">
-                    <span className="text-zinc-400">
-                      Saved:{" "}
-                      <strong className="text-white tabular-nums">
-                        {formatCurrency(goal.currentAmount || 0, currency)}
-                      </strong>
-                    </span>
-                    <span className="text-zinc-400">
-                      Goal:{" "}
-                      <strong className="text-zinc-200 tabular-nums">
-                        {formatCurrency(goal.targetAmount, currency)}
-                      </strong>
+                {/* Progress Bar & Amounts */}
+                <div className="space-y-1.5">
+                  <div className="flex items-baseline justify-between">
+                    <div>
+                      <span className="text-base sm:text-lg font-black text-[#213123] dark:text-[#f0f6ef] tabular-nums">
+                        {formatCurrency(current, currency)}
+                      </span>
+                      <span className="text-xs text-[#5e7d59] dark:text-[#9bb897] font-medium ml-1">
+                        of {formatCurrency(target, currency)}
+                      </span>
+                    </div>
+                    <span className="text-xs font-black text-[#54734e] dark:text-[#a3c99f] tabular-nums">
+                      {percentage.toFixed(0)}%
                     </span>
                   </div>
 
-                  <div className="w-full h-2.5 bg-zinc-950 rounded-full overflow-hidden p-0.5 border border-zinc-800/80">
+                  <div className="w-full h-3 bg-[#d3e3d1] dark:bg-[#162218] rounded-full overflow-hidden border border-[#c4d7c2] dark:border-[#384e3b] p-0.5">
                     <div
                       className="h-full rounded-full transition-all duration-500"
                       style={{
-                        width: `${Math.min(percentage, 100)}%`,
                         backgroundColor: goal.color,
+                        width: `${percentage}%`,
                       }}
                     />
                   </div>
 
-                  <div className="flex items-center justify-between text-[11px] text-zinc-500 mt-1.5">
-                    <span className="font-semibold tabular-nums text-emerald-400">
+                  <div className="flex justify-between text-[11px] font-semibold text-[#5e7d59] dark:text-[#9bb897] pt-0.5">
+                    <span>
                       {percentage.toFixed(0)}% reached
                     </span>
                     <span className="tabular-nums">
                       {remaining > 0
                         ? `${formatCurrency(remaining, currency)} left to save`
-                        : "Fully Funded!"}
+                        : "Fully Funded"}
                     </span>
                   </div>
                 </div>
 
                 {/* Calculated Savings Breakdown Box */}
                 {!isCompleted && (
-                  <div className="p-3.5 bg-black/40 border border-white/[0.06] rounded-2xl space-y-2.5">
-                    {/* Primary Highlighted Plan */}
+                  <div className="p-3.5 bg-[#dbe8da] dark:bg-[#162218]/70 border border-[#c1d5bf] dark:border-[#384e3b] rounded-2xl space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-xs text-zinc-300 font-semibold">
-                        <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>Recommended Savings Rate:</span>
-                      </div>
-                      <span className="text-xs font-extrabold text-emerald-400 tabular-nums bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                      <span className="text-xs text-[#213123] dark:text-[#f0f6ef] font-semibold">
+                        Recommended Savings Rate:
+                      </span>
+                      <span className="text-xs font-extrabold text-[#1f3d23] dark:text-[#c9dec8] tabular-nums bg-[#cde0cb] dark:bg-[#263728] border border-[#b8d2b6] dark:border-[#3d5341] px-2.5 py-0.5 rounded-full">
                         {formatCurrency(planAmount, currency)} / {goal.frequency === "daily" ? "day" : goal.frequency === "weekly" ? "week" : "month"}
                       </span>
                     </div>
 
-                    {/* 3-way breakdown: Day / Week / Month */}
-                    <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/[0.04] text-center">
-                      <div className={`p-1.5 rounded-xl ${goal.frequency === "daily" ? "bg-white/[0.06] border border-white/[0.1]" : ""}`}>
-                        <span className="text-[10px] text-zinc-500 block uppercase font-medium">Daily</span>
-                        <span className="text-xs font-bold text-zinc-200 tabular-nums">
+                    <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#c1d5bf]/60 dark:border-[#384e3b]/60 text-center">
+                      <div className={`p-1.5 rounded-xl ${goal.frequency === "daily" ? "bg-[#cde0cb]/70 dark:bg-[#263728]/70 border border-[#b8d2b6] dark:border-[#3d5341]" : ""}`}>
+                        <span className="text-[10px] text-[#5e7d59] dark:text-[#9bb897] block uppercase font-medium">Daily</span>
+                        <span className="text-xs font-bold text-[#213123] dark:text-[#f0f6ef] tabular-nums">
                           {formatCurrency(perDay, currency, { maximumFractionDigits: 0 })}
                         </span>
                       </div>
-                      <div className={`p-1.5 rounded-xl ${goal.frequency === "weekly" ? "bg-white/[0.06] border border-white/[0.1]" : ""}`}>
-                        <span className="text-[10px] text-zinc-500 block uppercase font-medium">Weekly</span>
-                        <span className="text-xs font-bold text-zinc-200 tabular-nums">
+                      <div className={`p-1.5 rounded-xl ${goal.frequency === "weekly" ? "bg-[#cde0cb]/70 dark:bg-[#263728]/70 border border-[#b8d2b6] dark:border-[#3d5341]" : ""}`}>
+                        <span className="text-[10px] text-[#5e7d59] dark:text-[#9bb897] block uppercase font-medium">Weekly</span>
+                        <span className="text-xs font-bold text-[#213123] dark:text-[#f0f6ef] tabular-nums">
                           {formatCurrency(perWeek, currency, { maximumFractionDigits: 0 })}
                         </span>
                       </div>
-                      <div className={`p-1.5 rounded-xl ${goal.frequency === "monthly" ? "bg-white/[0.06] border border-white/[0.1]" : ""}`}>
-                        <span className="text-[10px] text-zinc-500 block uppercase font-medium">Monthly</span>
-                        <span className="text-xs font-bold text-zinc-200 tabular-nums">
+                      <div className={`p-1.5 rounded-xl ${goal.frequency === "monthly" ? "bg-[#cde0cb]/70 dark:bg-[#263728]/70 border border-[#b8d2b6] dark:border-[#3d5341]" : ""}`}>
+                        <span className="text-[10px] text-[#5e7d59] dark:text-[#9bb897] block uppercase font-medium">Monthly</span>
+                        <span className="text-xs font-bold text-[#213123] dark:text-[#f0f6ef] tabular-nums">
                           {formatCurrency(perMonth, currency, { maximumFractionDigits: 0 })}
                         </span>
                       </div>
@@ -456,10 +399,9 @@ export function SavingsView() {
                       setDepositAmount("");
                       setDepositError(null);
                     }}
-                    className="w-full py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] hover:border-emerald-500/30 text-zinc-200 hover:text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                    className="w-full py-2.5 rounded-xl bg-[#d6e5d4] hover:bg-[#c6daca] dark:bg-[#263728] dark:hover:bg-[#2e4331] border border-[#c4d7c2] dark:border-[#384e3b] text-[#213123] dark:text-[#c9dec8] text-xs font-bold flex items-center justify-center transition-all active:scale-95"
                   >
-                    <Plus className="w-3.5 h-3.5 text-emerald-400 stroke-[2.5]" />
-                    <span>Add Funds to Goal</span>
+                    + Add Funds to Goal
                   </button>
                 </div>
               </div>
@@ -467,13 +409,10 @@ export function SavingsView() {
           })
         ) : (
           /* Empty State */
-          <div className="p-8 bg-[#121215] border border-dashed border-white/[0.12] rounded-[32px] text-center space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mx-auto shadow-lg shadow-emerald-500/10">
-              <PiggyBank className="w-7 h-7" />
-            </div>
+          <div className="p-8 bg-[#e2ede1] dark:bg-[#1c291e] border border-dashed border-[#c4d7c2] dark:border-[#384e3b] rounded-[32px] text-center space-y-4">
             <div className="space-y-1">
-              <h3 className="text-base font-bold text-zinc-100">Start a Savings Goal</h3>
-              <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
+              <h3 className="text-base font-bold text-[#213123] dark:text-[#f0f6ef]">Start a Savings Goal</h3>
+              <p className="text-xs text-[#5e7d59] dark:text-[#9bb897] max-w-sm mx-auto leading-relaxed">
                 Plan for a vacation, new gadgets, or an emergency fund. Set your target amount and timeline, and we&apos;ll calculate how much to save per day, week, and month.
               </p>
             </div>
@@ -481,10 +420,9 @@ export function SavingsView() {
               <button
                 type="button"
                 onClick={handleOpenCreate}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 text-zinc-950 text-xs font-bold uppercase tracking-wider shadow-xl shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all"
+                className="inline-flex items-center px-5 py-2.5 rounded-2xl bg-[#54734e] hover:bg-[#466141] text-white text-xs font-bold uppercase tracking-wider shadow-lg shadow-[#54734e]/30 hover:scale-105 active:scale-95 transition-all"
               >
-                <Plus className="w-4 h-4 stroke-[2.5]" />
-                <span>Create Your First Goal</span>
+                + Create Your First Goal
               </button>
             </div>
           </div>
@@ -496,33 +434,28 @@ export function SavingsView() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#162218]/40 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={(e) => {
             if (e.target === e.currentTarget) setIsCreateOpen(false);
           }}
         >
-          <div className="w-full max-w-md bg-[#121215] border border-white/[0.1] rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-md bg-[#e5efe3] dark:bg-[#1c291e] border border-[#c1d5bf] dark:border-[#384e3b] rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                  <Target className="w-4 h-4" />
-                </div>
-                <h3 className="text-sm font-bold text-zinc-100">
-                  {editingGoal ? "Edit Savings Goal" : "New Savings Goal"}
-                </h3>
-              </div>
+            <div className="flex items-center justify-between pb-3 border-b border-[#c1d5bf]/60 dark:border-[#384e3b]/60">
+              <h3 className="text-sm font-bold text-[#213123] dark:text-[#f0f6ef]">
+                {editingGoal ? "Edit Savings Goal" : "New Savings Goal"}
+              </h3>
               <button
                 type="button"
                 onClick={() => setIsCreateOpen(false)}
-                className="p-1.5 rounded-full text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.06] transition-colors"
+                className="px-2.5 py-1 rounded-lg text-xs font-semibold text-[#5e7d59] hover:text-[#213123] hover:bg-[#d6e5d4] dark:hover:bg-[#263728] transition-colors"
               >
-                <X className="w-4 h-4" />
+                Close
               </button>
             </div>
 
             {formError && (
-              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs font-semibold">
+              <div className="p-3 rounded-xl bg-[#b34033]/10 border border-[#b34033]/30 text-[#b34033] text-xs font-semibold">
                 {formError}
               </div>
             )}
@@ -530,7 +463,7 @@ export function SavingsView() {
             <form onSubmit={handleSubmitGoal} className="space-y-4">
               {/* Goal Name */}
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#5e7d59] dark:text-[#9bb897] mb-1">
                   Goal Name
                 </label>
                 <input
@@ -543,18 +476,18 @@ export function SavingsView() {
                   }}
                   required
                   autoFocus
-                  className="w-full bg-black/40 border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
+                  className="w-full bg-[#edf4eb] dark:bg-[#162218] border border-[#c1d5bf] dark:border-[#384e3b] rounded-xl px-3.5 py-2.5 text-xs text-[#213123] dark:text-[#f0f6ef] placeholder-[#82a47b] focus:outline-none focus:border-[#54734e]"
                 />
               </div>
 
               {/* Target & Current Amounts */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#5e7d59] dark:text-[#9bb897] mb-1">
                     Target Goal
                   </label>
                   <div className="relative flex items-center">
-                    <span className="absolute left-3 text-xs font-bold text-zinc-500">
+                    <span className="absolute left-3 text-xs font-bold text-[#5e7d59]">
                       {currency}
                     </span>
                     <input
@@ -565,17 +498,17 @@ export function SavingsView() {
                       value={targetAmount}
                       onChange={(e) => setTargetAmount(e.target.value)}
                       required
-                      className="w-full bg-black/40 border border-white/[0.08] rounded-xl pl-7 pr-3 py-2 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50 tabular-nums"
+                      className="w-full bg-[#edf4eb] dark:bg-[#162218] border border-[#c1d5bf] dark:border-[#384e3b] rounded-xl pl-7 pr-3 py-2 text-xs text-[#213123] dark:text-[#f0f6ef] placeholder-[#82a47b] focus:outline-none focus:border-[#54734e] tabular-nums"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#5e7d59] dark:text-[#9bb897] mb-1">
                     Already Saved
                   </label>
                   <div className="relative flex items-center">
-                    <span className="absolute left-3 text-xs font-bold text-zinc-500">
+                    <span className="absolute left-3 text-xs font-bold text-[#5e7d59]">
                       {currency}
                     </span>
                     <input
@@ -584,7 +517,7 @@ export function SavingsView() {
                       min="0"
                       value={currentAmount}
                       onChange={(e) => setCurrentAmount(e.target.value)}
-                      className="w-full bg-black/40 border border-white/[0.08] rounded-xl pl-7 pr-3 py-2 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50 tabular-nums"
+                      className="w-full bg-[#edf4eb] dark:bg-[#162218] border border-[#c1d5bf] dark:border-[#384e3b] rounded-xl pl-7 pr-3 py-2 text-xs text-[#213123] dark:text-[#f0f6ef] placeholder-[#82a47b] focus:outline-none focus:border-[#54734e] tabular-nums"
                     />
                   </div>
                 </div>
@@ -593,10 +526,10 @@ export function SavingsView() {
               {/* Duration in Months */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#5e7d59] dark:text-[#9bb897]">
                     Timeline (Months to Save)
                   </label>
-                  <span className="text-xs font-bold text-emerald-400 tabular-nums">
+                  <span className="text-xs font-bold text-[#1f3d23] dark:text-[#82a47b] tabular-nums">
                     {durationMonths} {durationMonths === 1 ? "month" : "months"}
                   </span>
                 </div>
@@ -609,8 +542,8 @@ export function SavingsView() {
                       onClick={() => setDurationMonths(m)}
                       className={`py-1.5 rounded-xl border text-[11px] font-bold transition-all ${
                         durationMonths === m
-                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                          : "bg-black/30 border-white/[0.06] text-zinc-400 hover:text-zinc-200"
+                          ? "bg-[#54734e] text-white border-[#54734e] shadow-sm"
+                          : "bg-[#d6e5d4] dark:bg-[#263728] border-[#c4d7c2] dark:border-[#384e3b] text-[#213123] dark:text-[#c9dec8] hover:bg-[#c6daca]"
                       }`}
                     >
                       {m} mo{m > 1 ? "s" : ""}
@@ -624,13 +557,13 @@ export function SavingsView() {
                   max="48"
                   value={durationMonths}
                   onChange={(e) => setDurationMonths(Number(e.target.value))}
-                  className="w-full accent-emerald-500 bg-zinc-800 rounded-lg h-2 cursor-pointer"
+                  className="w-full accent-[#54734e] bg-[#c4d7c2] dark:bg-[#384e3b] rounded-lg h-2 cursor-pointer"
                 />
               </div>
 
-              {/* Savings Frequency Mode (How you will save) */}
+              {/* Savings Frequency Mode */}
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#5e7d59] dark:text-[#9bb897] mb-1.5">
                   How will you save?
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -641,8 +574,8 @@ export function SavingsView() {
                       onClick={() => setFrequency(f)}
                       className={`py-2 px-2 rounded-xl border text-xs font-bold capitalize transition-all ${
                         frequency === f
-                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm"
-                          : "bg-black/30 border-white/[0.06] text-zinc-400 hover:text-zinc-200"
+                          ? "bg-[#54734e] text-white border-[#54734e] shadow-sm"
+                          : "bg-[#d6e5d4] dark:bg-[#263728] border-[#c4d7c2] dark:border-[#384e3b] text-[#213123] dark:text-[#c9dec8] hover:bg-[#c6daca]"
                       }`}
                     >
                       Per {f === "daily" ? "Day" : f === "weekly" ? "Week" : "Month"}
@@ -653,15 +586,14 @@ export function SavingsView() {
 
               {/* Dynamic Live Calculator Box */}
               {previewTarget > 0 && (
-                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-500/20 space-y-2">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-300">
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Calculated Savings Plan:</span>
+                <div className="p-3.5 rounded-2xl bg-[#dbe8da] dark:bg-[#162218]/80 border border-[#c1d5bf] dark:border-[#384e3b] space-y-2">
+                  <div className="text-xs font-bold text-[#213123] dark:text-[#f0f6ef]">
+                    Calculated Savings Plan:
                   </div>
 
-                  <div className="text-sm font-extrabold text-white">
+                  <div className="text-sm font-extrabold text-[#213123] dark:text-[#f0f6ef]">
                     Save{" "}
-                    <span className="text-emerald-400 tabular-nums">
+                    <span className="text-[#1f3d23] dark:text-[#82a47b] tabular-nums">
                       {formatCurrency(
                         frequency === "daily"
                           ? previewPerDay
@@ -674,22 +606,22 @@ export function SavingsView() {
                     per {frequency === "daily" ? "day" : frequency === "weekly" ? "week" : "month"} for {previewMonths} months.
                   </div>
 
-                  <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-emerald-500/15 text-[11px] text-zinc-400 text-center">
+                  <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-[#c1d5bf]/60 dark:border-[#384e3b]/60 text-[11px] text-[#5e7d59] dark:text-[#9bb897] text-center">
                     <div>
-                      <span className="block text-[10px] text-zinc-500">Day</span>
-                      <span className="font-bold text-zinc-200 tabular-nums">
+                      <span className="block text-[10px] text-[#5e7d59] dark:text-[#9bb897]">Daily</span>
+                      <span className="font-bold text-[#213123] dark:text-[#f0f6ef] tabular-nums">
                         {formatCurrency(previewPerDay, currency, { maximumFractionDigits: 0 })}
                       </span>
                     </div>
                     <div>
-                      <span className="block text-[10px] text-zinc-500">Week</span>
-                      <span className="font-bold text-zinc-200 tabular-nums">
+                      <span className="block text-[10px] text-[#5e7d59] dark:text-[#9bb897]">Weekly</span>
+                      <span className="font-bold text-[#213123] dark:text-[#f0f6ef] tabular-nums">
                         {formatCurrency(previewPerWeek, currency, { maximumFractionDigits: 0 })}
                       </span>
                     </div>
                     <div>
-                      <span className="block text-[10px] text-zinc-500">Month</span>
-                      <span className="font-bold text-zinc-200 tabular-nums">
+                      <span className="block text-[10px] text-[#5e7d59] dark:text-[#9bb897]">Monthly</span>
+                      <span className="font-bold text-[#213123] dark:text-[#f0f6ef] tabular-nums">
                         {formatCurrency(previewPerMonth, currency, { maximumFractionDigits: 0 })}
                       </span>
                     </div>
@@ -697,47 +629,23 @@ export function SavingsView() {
                 </div>
               )}
 
-              {/* Icon & Color Pickers */}
+              {/* Color Picker */}
               <div className="space-y-2">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-                  Icon & Color
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#5e7d59] dark:text-[#9bb897]">
+                  Color Theme
                 </label>
-                <div className="flex items-center justify-between gap-3">
-                  {/* Icons */}
-                  <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-1">
-                    {Object.keys(GOAL_ICONS).map((iconKey) => {
-                      const IconComp = GOAL_ICONS[iconKey];
-                      return (
-                        <button
-                          key={iconKey}
-                          type="button"
-                          onClick={() => setIcon(iconKey)}
-                          className={`p-2 rounded-xl border transition-all ${
-                            icon === iconKey
-                              ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
-                              : "bg-black/30 border-white/[0.06] text-zinc-400 hover:text-zinc-200"
-                          }`}
-                        >
-                          <IconComp className="w-3.5 h-3.5" />
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Colors */}
-                  <div className="flex gap-1.5 shrink-0">
-                    {GOAL_COLORS.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setColor(c)}
-                        style={{ backgroundColor: c }}
-                        className={`w-5 h-5 rounded-full transition-transform ${
-                          color === c ? "scale-125 ring-2 ring-white/60" : "opacity-80 hover:opacity-100"
-                        }`}
-                      />
-                    ))}
-                  </div>
+                <div className="flex gap-2 py-1">
+                  {GOAL_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setColor(c)}
+                      style={{ backgroundColor: c }}
+                      className={`w-6 h-6 rounded-full transition-transform ${
+                        color === c ? "scale-125 ring-2 ring-[#213123]/60 dark:ring-white/60" : "opacity-80 hover:opacity-100"
+                      }`}
+                    />
+                  ))}
                 </div>
               </div>
 
@@ -746,7 +654,7 @@ export function SavingsView() {
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 text-zinc-950 font-bold text-xs uppercase tracking-wider hover:from-emerald-400 hover:to-teal-300 transition-all shadow-lg shadow-emerald-500/20 active:scale-95 disabled:opacity-50"
+                  className="w-full py-3.5 rounded-2xl bg-[#54734e] hover:bg-[#466141] text-white font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-[#54734e]/40 active:scale-95 disabled:opacity-50"
                 >
                   {isSaving ? "Saving..." : editingGoal ? "Update Goal" : "Create Savings Goal"}
                 </button>
@@ -761,41 +669,36 @@ export function SavingsView() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#162218]/40 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={(e) => {
             if (e.target === e.currentTarget) setDepositGoalId(null);
           }}
         >
-          <div className="w-full max-w-sm bg-[#121215] border border-white/[0.1] rounded-3xl p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                  <ArrowUpRight className="w-4 h-4" />
-                </div>
-                <h3 className="text-sm font-bold text-zinc-100">Add Funds to Goal</h3>
-              </div>
+          <div className="w-full max-w-sm bg-[#e5efe3] dark:bg-[#1c291e] border border-[#c1d5bf] dark:border-[#384e3b] rounded-3xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#c1d5bf]/60 dark:border-[#384e3b]/60">
+              <h3 className="text-sm font-bold text-[#213123] dark:text-[#f0f6ef]">Add Funds to Goal</h3>
               <button
                 type="button"
                 onClick={() => setDepositGoalId(null)}
-                className="p-1.5 rounded-full text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.06]"
+                className="px-2.5 py-1 rounded-lg text-xs font-semibold text-[#5e7d59] hover:text-[#213123] hover:bg-[#d6e5d4] dark:hover:bg-[#263728]"
               >
-                <X className="w-4 h-4" />
+                Close
               </button>
             </div>
 
             {depositError && (
-              <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs font-semibold">
+              <div className="p-2.5 rounded-xl bg-[#b34033]/10 border border-[#b34033]/30 text-[#b34033] text-xs font-semibold">
                 {depositError}
               </div>
             )}
 
             <form onSubmit={handleDepositSubmit} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#5e7d59] dark:text-[#9bb897] mb-1">
                   Deposit Amount
                 </label>
                 <div className="relative flex items-center">
-                  <span className="absolute left-3.5 text-xs font-bold text-zinc-500">
+                  <span className="absolute left-3.5 text-xs font-bold text-[#5e7d59]">
                     {currency}
                   </span>
                   <input
@@ -810,7 +713,7 @@ export function SavingsView() {
                     }}
                     required
                     autoFocus
-                    className="w-full bg-black/40 border border-white/[0.08] rounded-xl pl-8 pr-3.5 py-2.5 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50 tabular-nums"
+                    className="w-full bg-[#edf4eb] dark:bg-[#162218] border border-[#c1d5bf] dark:border-[#384e3b] rounded-xl pl-8 pr-3.5 py-2.5 text-xs text-[#213123] dark:text-[#f0f6ef] placeholder-[#82a47b] focus:outline-none focus:border-[#54734e] tabular-nums"
                   />
                 </div>
               </div>
@@ -822,7 +725,7 @@ export function SavingsView() {
                     key={val}
                     type="button"
                     onClick={() => setDepositAmount(String(val))}
-                    className="py-1.5 rounded-xl border border-white/[0.06] bg-black/30 hover:bg-white/[0.06] text-zinc-300 text-[11px] font-bold tabular-nums transition-colors"
+                    className="py-1.5 rounded-xl border border-[#c4d7c2] dark:border-[#384e3b] bg-[#d6e5d4] dark:bg-[#263728] hover:bg-[#c6daca] dark:hover:bg-[#2e4331] text-[#213123] dark:text-[#c9dec8] text-[11px] font-bold tabular-nums transition-colors"
                   >
                     +{currency}{val}
                   </button>
@@ -832,7 +735,7 @@ export function SavingsView() {
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 text-zinc-950 font-bold text-xs uppercase tracking-wider hover:from-emerald-400 hover:to-teal-300 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
+                  className="w-full py-3 rounded-2xl bg-[#54734e] hover:bg-[#466141] text-white font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-[#54734e]/40 active:scale-95"
                 >
                   Confirm Deposit
                 </button>

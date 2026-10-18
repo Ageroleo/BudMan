@@ -1,35 +1,41 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #09090b;
-  --surface: #121215;
-  --surface-raised: #18181c;
-  --foreground: #f4f4f5;
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --card-bg: #121215;
-  --card-border: rgba(255, 255, 255, 0.08);
+  --background: #edf4eb;
+  --surface: #e2ede1;
+  --surface-raised: #dce9da;
+  --foreground: #213123;
+  --border-subtle: #c4d7c2;
+  --card-bg: #e2ede1;
+  --card-border: #c4d7c2;
+  color-scheme: light;
 }
 
 html.light,
-[data-theme="light"] {
-  --background: #f8fafc;
-  --surface: #ffffff;
-  --surface-raised: #f1f5f9;
-  --foreground: #09090b;
-  --border-subtle: rgba(0, 0, 0, 0.08);
-  --card-bg: #ffffff;
-  --card-border: rgba(0, 0, 0, 0.08);
+[data-theme="light"],
+html:not(.dark) {
+  --background: #edf4eb;
+  --surface: #e2ede1;
+  --surface-raised: #dce9da;
+  --foreground: #213123;
+  --border-subtle: #c4d7c2;
+  --card-bg: #e2ede1;
+  --card-border: #c4d7c2;
+  color-scheme: light;
 }
 
 html.dark,
 [data-theme="dark"] {
-  --background: #09090b;
-  --surface: #121215;
-  --surface-raised: #18181c;
-  --foreground: #f4f4f5;
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --card-bg: #121215;
-  --card-border: rgba(255, 255, 255, 0.08);
+  --background: #152017;
+  --surface: #1e2c20;
+  --surface-raised: #253628;
+  --foreground: #eef5ed;
+  --border-subtle: #2d4231;
+  --card-bg: #1e2c20;
+  --card-border: #2d4231;
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -67,10 +73,11 @@ body {
   scrollbar-width: none;
 }
 
-/* Subtle fintech glow styles */
+/* Matcha fintech card & subtle glow */
 .fintech-card {
-  background: radial-gradient(120% 120% at 50% 0%, rgba(24, 24, 28, 0.95) 0%, rgba(18, 18, 21, 0.95) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #e2ede1;
+  border: 1px solid #c4d7c2;
+  box-shadow: 0 4px 20px -2px rgba(33, 49, 35, 0.06), 0 2px 6px -1px rgba(33, 49, 35, 0.04);
 }
 
 .fintech-card-glow {
@@ -83,7 +90,7 @@ body {
   left: 20%;
   right: 20%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(52, 211, 153, 0.4), transparent);
+  background: linear-gradient(90deg, transparent, rgba(107, 140, 101, 0.6), transparent);
   pointer-events: none;
 }
 
@@ -94,7 +101,7 @@ body {
   transition: filter 0.2s ease-in-out;
 }
 
-/* Custom scrollbars */
+/* Custom scrollbars with warm matcha tones */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
@@ -105,81 +112,91 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(107, 140, 101, 0.35);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(84, 115, 78, 0.65);
+}
+
+/* Focus and tap highlights */
+:focus-visible {
+  outline: 2px solid #6b8c65;
+  outline-offset: 2px;
 }
 
 /* ==========================================================================
-   LIGHT MODE OVERRIDES
-   Ensures seamless, high-contrast, beautiful appearance in light theme
+   MATCHA GREEN THEME REFINEMENTS
+   Soft matcha froth canvas, creamy matcha milk cards, deep tea & frothy moss
    ========================================================================== */
 
-html.light,
-html[data-theme="light"] {
-  color-scheme: light;
+html:not(.dark) body,
+html.light body {
+  background-color: #edf4eb !important;
+  color: #213123 !important;
 }
 
-html.light body,
-html[data-theme="light"] body {
-  background-color: #f8fafc !important;
-  color: #0f172a !important;
+/* Background containers */
+html:not(.dark) .bg-\[\#09090b\],
+html.light .bg-\[\#09090b\] {
+  background-color: #edf4eb !important;
 }
 
-/* Main page background */
-html.light .bg-\[\#09090b\],
-html[data-theme="light"] .bg-\[\#09090b\] {
-  background-color: #f8fafc !important;
+html:not(.dark) .bg-zinc-950,
+html.light .bg-zinc-950 {
+  background-color: #edf4eb !important;
 }
 
-html.light .bg-zinc-950,
-html[data-theme="light"] .bg-zinc-950 {
-  background-color: #f8fafc !important;
+/* Card surfaces */
+html:not(.dark) .bg-\[\#121215\],
+html.light .bg-\[\#121215\] {
+  background-color: #e2ede1 !important;
+  border-color: #c4d7c2 !important;
+  box-shadow: 0 4px 18px -2px rgba(33, 49, 35, 0.05), 0 1px 3px 0 rgba(33, 49, 35, 0.03) !important;
 }
 
-/* Surface cards */
-html.light .bg-\[\#121215\],
-html[data-theme="light"] .bg-\[\#121215\] {
-  background-color: #ffffff !important;
-  box-shadow: 0 4px 18px -2px rgba(15, 23, 42, 0.04), 0 1px 3px 0 rgba(15, 23, 42, 0.03);
-}
-
-html.light .hover\:bg-\[\#18181d\]:hover,
-html[data-theme="light"] .hover\:bg-\[\#18181d\]:hover {
-  background-color: #f1f5f9 !important;
+html:not(.dark) .hover\:bg-\[\#18181d\]:hover,
+html.light .hover\:bg-\[\#18181d\]:hover {
+  background-color: #d8e6d6 !important;
 }
 
 /* Surface hovers & pills */
+html:not(.dark) .bg-black\/40,
+html:not(.dark) .bg-black\/30,
 html.light .bg-black\/40,
-html.light .bg-black\/30,
-html[data-theme="light"] .bg-black\/40,
-html[data-theme="light"] .bg-black\/30 {
-  background-color: #f1f5f9 !important;
-  border-color: rgba(0, 0, 0, 0.08) !important;
+html.light .bg-black\/30 {
+  background-color: #d8e7d6 !important;
+  border-color: #c4d7c2 !important;
 }
 
+html:not(.dark) .bg-white\/\[0\.02\],
+html:not(.dark) .bg-white\/\[0\.03\],
+html:not(.dark) .bg-white\/\[0\.04\],
 html.light .bg-white\/\[0\.02\],
 html.light .bg-white\/\[0\.03\],
-html.light .bg-white\/\[0\.04\],
-html[data-theme="light"] .bg-white\/\[0\.02\],
-html[data-theme="light"] .bg-white\/\[0\.03\],
-html[data-theme="light"] .bg-white\/\[0\.04\] {
-  background-color: #f1f5f9 !important;
+html.light .bg-white\/\[0\.04\] {
+  background-color: #dbe8da !important;
 }
 
+html:not(.dark) .hover\:bg-white\/\[0\.04\]:hover,
+html:not(.dark) .hover\:bg-white\/\[0\.06\]:hover,
+html:not(.dark) .hover\:bg-white\/\[0\.08\]:hover,
 html.light .hover\:bg-white\/\[0\.04\]:hover,
 html.light .hover\:bg-white\/\[0\.06\]:hover,
-html.light .hover\:bg-white\/\[0\.08\]:hover,
-html[data-theme="light"] .hover\:bg-white\/\[0\.04\]:hover,
-html[data-theme="light"] .hover\:bg-white\/\[0\.06\]:hover,
-html[data-theme="light"] .hover\:bg-white\/\[0\.08\]:hover {
-  background-color: #e2e8f0 !important;
+html.light .hover\:bg-white\/\[0\.08\]:hover {
+  background-color: #cfdfcd !important;
 }
 
 /* Borders */
+html:not(.dark) .border-white\/\[0\.04\],
+html:not(.dark) .border-white\/\[0\.05\],
+html:not(.dark) .border-white\/\[0\.06\],
+html:not(.dark) .border-white\/\[0\.08\],
+html:not(.dark) .border-white\/\[0\.1\],
+html:not(.dark) .border-white\/\[0\.12\],
+html:not(.dark) .border-white\/10,
+html:not(.dark) .border-zinc-800,
 html.light .border-white\/\[0\.04\],
 html.light .border-white\/\[0\.05\],
 html.light .border-white\/\[0\.06\],
@@ -187,176 +204,80 @@ html.light .border-white\/\[0\.08\],
 html.light .border-white\/\[0\.1\],
 html.light .border-white\/\[0\.12\],
 html.light .border-white\/10,
-html.light .border-zinc-800,
-html[data-theme="light"] .border-white\/\[0\.04\],
-html[data-theme="light"] .border-white\/\[0\.05\],
-html[data-theme="light"] .border-white\/\[0\.06\],
-html[data-theme="light"] .border-white\/\[0\.08\],
-html[data-theme="light"] .border-white\/\[0\.1\],
-html[data-theme="light"] .border-white\/\[0\.12\],
-html[data-theme="light"] .border-white\/10,
-html[data-theme="light"] .border-zinc-800 {
-  border-color: rgba(0, 0, 0, 0.08) !important;
+html.light .border-zinc-800 {
+  border-color: #c4d7c2 !important;
 }
 
 /* Sticky headers */
-html.light .bg-zinc-950\/90,
-html[data-theme="light"] .bg-zinc-950\/90 {
-  background-color: rgba(248, 250, 252, 0.94) !important;
-  border-color: rgba(0, 0, 0, 0.08) !important;
+html:not(.dark) .bg-zinc-950\/90,
+html.light .bg-zinc-950\/90 {
+  background-color: rgba(237, 244, 235, 0.94) !important;
+  border-color: #c4d7c2 !important;
 }
 
-/* Floating bottom nav */
-html.light .bg-zinc-900\/85,
-html[data-theme="light"] .bg-zinc-900\/85 {
-  background-color: rgba(255, 255, 255, 0.88) !important;
-  border-color: rgba(0, 0, 0, 0.08) !important;
-  box-shadow: 0 16px 36px -4px rgba(15, 23, 42, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.06) !important;
-}
-
-html.light .bg-zinc-900\/85 .text-zinc-500,
-html[data-theme="light"] .bg-zinc-900\/85 .text-zinc-500 {
-  color: #64748b !important;
-}
-
-html.light .bg-zinc-900\/85 .text-zinc-500:hover,
-html[data-theme="light"] .bg-zinc-900\/85 .text-zinc-500:hover {
-  color: #0f172a !important;
-  background-color: #f1f5f9 !important;
-}
-
-html.light .bg-zinc-900\/85 .bg-white\/\[0\.08\],
-html[data-theme="light"] .bg-zinc-900\/85 .bg-white\/\[0\.08\] {
-  background-color: #ecfdf5 !important;
-  border-color: rgba(16, 185, 129, 0.3) !important;
+/* Deep forest bottom navigation */
+html:not(.dark) .bg-zinc-900\/85,
+html.light .bg-zinc-900\/85 {
+  background-color: rgba(36, 52, 38, 0.95) !important;
+  border-color: #384e3b !important;
+  box-shadow: 0 16px 36px -4px rgba(23, 34, 25, 0.3) !important;
 }
 
 /* Text Hierarchy */
-html.light .text-white,
-html[data-theme="light"] .text-white {
-  color: #0f172a !important;
+html:not(.dark) .text-white,
+html.light .text-white {
+  color: #213123 !important;
 }
 
+html:not(.dark) .text-zinc-100,
+html:not(.dark) .text-zinc-200,
 html.light .text-zinc-100,
-html.light .text-zinc-200,
-html[data-theme="light"] .text-zinc-100,
-html[data-theme="light"] .text-zinc-200 {
-  color: #0f172a !important;
+html.light .text-zinc-200 {
+  color: #213123 !important;
 }
 
-html.light .text-zinc-300,
-html[data-theme="light"] .text-zinc-300 {
-  color: #1e293b !important;
+html:not(.dark) .text-zinc-300,
+html.light .text-zinc-300 {
+  color: #2e4331 !important;
 }
 
-html.light .text-zinc-400,
-html[data-theme="light"] .text-zinc-400 {
-  color: #475569 !important;
+html:not(.dark) .text-zinc-400,
+html.light .text-zinc-400 {
+  color: #4f6852 !important;
 }
 
-html.light .text-zinc-500,
-html[data-theme="light"] .text-zinc-500 {
-  color: #64748b !important;
+html:not(.dark) .text-zinc-500,
+html.light .text-zinc-500 {
+  color: #5c755f !important;
 }
 
-html.light .text-zinc-600,
-html[data-theme="light"] .text-zinc-600 {
-  color: #94a3b8 !important;
+html:not(.dark) .text-zinc-600,
+html.light .text-zinc-600 {
+  color: #7d9680 !important;
 }
 
-/* Balance Card Gradient in Light Mode */
-html.light .bg-gradient-to-b.from-\[\#18181d\].via-\[\#121215\].to-\[\#0c0c0e\],
-html[data-theme="light"] .bg-gradient-to-b.from-\[\#18181d\].via-\[\#121215\].to-\[\#0c0c0e\] {
-  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
-  border-color: rgba(0, 0, 0, 0.08) !important;
-  box-shadow: 0 12px 32px -4px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.04) !important;
-}
-
-html.light .fintech-card-glow::before,
-html[data-theme="light"] .fintech-card-glow::before {
-  background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.5), transparent) !important;
-}
-
-/* Accent contrast adjustments for light mode */
-html.light .text-emerald-400,
-html[data-theme="light"] .text-emerald-400 {
-  color: #059669 !important; /* emerald-600 */
-}
-
-html.light .text-rose-400,
-html[data-theme="light"] .text-rose-400 {
-  color: #e11d48 !important; /* rose-600 */
-}
-
-html.light .text-emerald-300,
-html[data-theme="light"] .text-emerald-300 {
-  color: #047857 !important; /* emerald-700 */
-}
-
-html.light .text-rose-300,
-html[data-theme="light"] .text-rose-300 {
-  color: #be123c !important; /* rose-700 */
-}
-
-/* Ensure buttons with solid colors retain light text */
-html.light .bg-emerald-500,
-html.light .bg-rose-600,
-html.light .bg-rose-500,
-html[data-theme="light"] .bg-emerald-500,
-html[data-theme="light"] .bg-rose-600,
-html[data-theme="light"] .bg-rose-500 {
-  color: #ffffff !important;
-}
-
-html.light .bg-emerald-500 .text-white,
-html.light .bg-rose-600 .text-white,
-html.light .bg-rose-500 .text-white,
-html[data-theme="light"] .bg-emerald-500 .text-white,
-html[data-theme="light"] .bg-rose-600 .text-white,
-html[data-theme="light"] .bg-rose-500 .text-white {
-  color: #ffffff !important;
-}
-
-html.light .bg-emerald-500 .text-zinc-950,
-html.light .bg-gradient-to-r .text-zinc-950,
-html[data-theme="light"] .bg-emerald-500 .text-zinc-950,
-html[data-theme="light"] .bg-gradient-to-r .text-zinc-950 {
-  color: #022c22 !important;
-}
-
-/* Inputs and Forms in Light Mode */
+/* Inputs and Forms */
+html:not(.dark) input,
+html:not(.dark) select,
+html:not(.dark) textarea,
 html.light input,
 html.light select,
-html.light textarea,
-html[data-theme="light"] input,
-html[data-theme="light"] select,
-html[data-theme="light"] textarea {
-  color: #0f172a !important;
+html.light textarea {
+  color: #213123 !important;
 }
 
-html.light input::placeholder,
-html[data-theme="light"] input::placeholder {
-  color: #94a3b8 !important;
+html:not(.dark) input::placeholder,
+html.light input::placeholder {
+  color: #7b947e !important;
 }
 
-/* Modal Backdrops in Light Mode */
+/* Modal Backdrops */
+html:not(.dark) .bg-black\/80,
+html:not(.dark) .bg-black\/70,
+html:not(.dark) .bg-black\/60,
 html.light .bg-black\/80,
 html.light .bg-black\/70,
-html.light .bg-black\/60,
-html[data-theme="light"] .bg-black\/80,
-html[data-theme="light"] .bg-black\/70,
-html[data-theme="light"] .bg-black\/60 {
-  background-color: rgba(15, 23, 42, 0.45) !important;
-  backdrop-filter: blur(6px) !important;
-}
-
-/* Light mode scrollbars */
-html.light ::-webkit-scrollbar-thumb,
-html[data-theme="light"] ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.16);
-}
-
-html.light ::-webkit-scrollbar-thumb:hover,
-html[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.28);
+html.light .bg-black\/60 {
+  background-color: rgba(22, 34, 24, 0.45) !important;
+  backdrop-filter: blur(8px) !important;
 }

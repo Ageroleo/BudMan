@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const viewport: Viewport = {
-  themeColor: "#09090b",
+  themeColor: "#edf4eb",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   applicationName: "BudMan",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     title: "BudMan",
   },
   icons: {
@@ -46,16 +46,16 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased light`}
     >
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('budman_theme');var isLight=t==='light'||(t==='system'&&!window.matchMedia('(prefers-color-scheme: dark)').matches);var r=document.documentElement;if(isLight){r.classList.remove('dark');r.classList.add('light');r.setAttribute('data-theme','light');r.style.colorScheme='light';}else{r.classList.add('dark');r.classList.remove('light');r.setAttribute('data-theme','dark');r.style.colorScheme='dark';}}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('budman_theme');var isDark=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);var r=document.documentElement;if(isDark){r.classList.add('dark');r.classList.remove('light');r.setAttribute('data-theme','dark');r.style.colorScheme='dark';}else{r.classList.remove('dark');r.classList.add('light');r.setAttribute('data-theme','light');r.style.colorScheme='light';}}catch(e){}})();`,
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col bg-background text-foreground selection:bg-emerald-500/30 selection:text-emerald-300">
+      <body className="min-h-full flex flex-col bg-[#edf4eb] text-[#213123] selection:bg-[#c4d7c2] selection:text-[#213123]">
         <PWARegistration />
         {children}
       </body>

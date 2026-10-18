@@ -2,10 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Plus, X, Calendar, FileText, Check, Landmark } from "lucide-react";
 import { db, seedCategories, type Account } from "@/lib/db";
-import { useCurrency } from "@/lib/format";
-import { CategoryIcon } from "./CategoryIcon";
+import { useCurrency, formatCurrency } from "@/lib/format";
 import { CreateAccountModal } from "./CreateAccountModal";
 
 export function AddTransactionModal() {
@@ -14,7 +12,7 @@ export function AddTransactionModal() {
   const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
   const [type, setType] = useState<"expense" | "income">("expense");
   const [amount, setAmount] = useState<string>("");
-  const [accountId, setAccountId] = useState<number | null>(null);
+  const [accountId, setAccountId] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [date, setDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState<string>("");
@@ -31,7 +29,7 @@ export function AddTransactionModal() {
     return list;
   }, []);
 
-  // Live query for user accounts (purely user-defined, no auto-seed)
+  // Live query for user accounts
   const accounts = useLiveQuery(async () => {
     return await db.accounts.toArray();
   }, []);
@@ -39,7 +37,7 @@ export function AddTransactionModal() {
   // Pre-select first account if available and none selected
   useEffect(() => {
     if (accounts && accounts.length > 0 && accountId === null) {
-      setAccountId(accounts[0].id ?? null);
+      setAccountId(accounts[0].id);
     }
   }, [accounts, accountId]);
 
@@ -60,64 +58,65 @@ export function AddTransactionModal() {
   };
 
   const resetForm = () => {
-    setType("expense");
     setAmount("");
     setCategoryId(null);
-    if (accounts && accounts.length > 0) {
-      setAccountId(accounts[0].id ?? null);
-    } else {
-      setAccountId(null);
-    }
-    setDate(new Date().toISOString().slice(0, 10));
     setNote("");
     setErrorMessage(null);
+    setDate(new Date().toISOString().slice(0, 10));
+    if (accounts && accounts.length > 0) {
+      setAccountId(accounts[0].id);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
+    // Validation
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      setErrorMessage(`Please enter a valid amount greater than ${currency}0.00`);
-      return;
-    }
-
-    if (!accountId) {
-      if (!accounts || accounts.length === 0) {
-        setIsAddAccountOpen(true);
-        setErrorMessage("Please create an account first to log your transaction");
-      } else {
-        setErrorMessage("Please select an account for this transaction");
-      }
+      setErrorMessage("Please enter an amount greater than 0");
       return;
     }
 
     if (!categoryId) {
-      setErrorMessage("Please select a category for this transaction");
+      setErrorMessage("Please select a category");
       return;
     }
 
     if (!date) {
-      setErrorMessage("Please select a date");
+      setErrorMessage("Please select a transaction date");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await db.transactions.add({
-        amount: parsedAmount,
-        type,
-        categoryId,
-        accountId,
-        date,
-        note: note.trim() || undefined,
-        createdAt: new Date(),
+      await db.transaction("rw", db.transactions, db.accounts, async () => {
+        // Add the transaction record
+        await db.transactions.add({
+          amount: parsedAmount,
+          type,
+          categoryId,
+          accountId: accountId ?? undefined,
+          date,
+          note: note.trim() || undefined,
+          createdAt: new Date(),
+        });
+
+        // Deduct from or add to account balance if an account was linked
+        if (accountId) {
+          const acc = await db.accounts.get(accountId);
+          if (acc) {
+            const currentBal = acc.balance || 0;
+            const updatedBal = type === "expense" ? currentBal - parsedAmount : currentBal + parsedAmount;
+            await db.accounts.update(accountId, { balance: updatedBal });
+          }
+        }
       });
 
       handleClose();
-    } catch (err) {
-      console.error("Failed to add transaction:", err);
+    } catch (error) {
+      console.error("Failed to add transaction:", error);
       setErrorMessage("Failed to save transaction to database.");
     } finally {
       setIsSubmitting(false);
@@ -127,67 +126,69 @@ export function AddTransactionModal() {
   return (
     <>
       {/* Floating Action Button (FAB) */}
-      <button
-        type="button"
-        onClick={handleOpen}
-        aria-label="Add Transaction"
-        className="fixed bottom-24 right-5 sm:bottom-24 sm:right-8 z-30 flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-zinc-950 font-semibold shadow-2xl shadow-emerald-500/40 hover:scale-105 active:scale-95 transition-all focus:outline-none focus:ring-4 focus:ring-emerald-500/40 border border-emerald-300/30"
-      >
-        <Plus className="w-7 h-7 stroke-[2.5]" />
-      </button>
+      <div className="fixed bottom-20 right-4 sm:bottom-22 sm:right-8 z-40">
+        <button
+          type="button"
+          onClick={handleOpen}
+          aria-label="Add transaction"
+          className="w-14 h-14 rounded-full bg-[#54734e] hover:bg-[#466141] text-white flex items-center justify-center shadow-lg shadow-[#54734e]/40 hover:scale-105 active:scale-95 transition-all duration-200 border-2 border-[#82a47b]/40 font-bold text-2xl"
+        >
+          +
+        </button>
+      </div>
 
       {/* Bottom Sheet Backdrop & Modal */}
       {isOpen && (
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-md transition-opacity animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm bg-[#162218]/40 transition-opacity animate-in fade-in duration-200"
           onClick={(e) => {
             if (e.target === e.currentTarget) handleClose();
           }}
         >
-          <div className="w-full sm:max-w-md bg-[#121215] border-t sm:border border-white/[0.1] rounded-t-[32px] sm:rounded-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300">
+          <div className="w-full sm:max-w-md bg-[#e5efe3] border-t sm:border border-[#c1d5bf] rounded-t-[32px] sm:rounded-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300">
             {/* Drag handle pill */}
             <div className="pt-3 pb-1 flex justify-center">
-              <div className="w-10 h-1 rounded-full bg-zinc-700/60" />
+              <div className="w-10 h-1 rounded-full bg-[#b0c7ae]" />
             </div>
 
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 pb-3 pt-1 border-b border-white/[0.06]">
+            <div className="flex items-center justify-between px-6 pb-3 pt-1 border-b border-[#c1d5bf]">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <h2 className="text-base font-bold text-zinc-100 tracking-tight">
+                <span className="w-2 h-2 rounded-full bg-[#6b8c65] animate-pulse" />
+                <h2 className="text-base font-bold text-[#213123] tracking-tight">
                   New Transaction
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={handleClose}
-                className="p-2 rounded-full text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+                className="px-2.5 py-1 rounded-lg text-xs font-semibold text-[#5c755f] hover:text-[#213123] hover:bg-[#d6e5d4] transition-colors"
                 aria-label="Close modal"
               >
-                <X className="w-5 h-5" />
+                Close
               </button>
             </div>
 
             {/* Scrollable Form Body */}
             <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-5">
               {errorMessage && (
-                <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs font-semibold flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                   {errorMessage}
                 </div>
               )}
 
               {/* Type Toggle: Segmented Control */}
-              <div className="grid grid-cols-2 p-1 bg-black/40 border border-white/[0.08] rounded-2xl">
+              <div className="grid grid-cols-2 p-1 bg-[#d3e3d1] border border-[#c1d5bf] rounded-2xl">
                 <button
                   type="button"
                   onClick={() => setType("expense")}
                   className={`py-2 text-xs font-bold rounded-xl transition-all ${
                     type === "expense"
-                      ? "bg-rose-500/20 text-rose-300 border border-rose-500/30 shadow-sm"
-                      : "text-zinc-400 hover:text-zinc-200"
+                      ? "bg-[#263728] text-white shadow-sm"
+                      : "text-[#4f6852] hover:text-[#213123]"
                   }`}
                 >
                   Expense
@@ -197,21 +198,21 @@ export function AddTransactionModal() {
                   onClick={() => setType("income")}
                   className={`py-2 text-xs font-bold rounded-xl transition-all ${
                     type === "income"
-                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm"
-                      : "text-zinc-400 hover:text-zinc-200"
+                      ? "bg-[#263728] text-white shadow-sm"
+                      : "text-[#4f6852] hover:text-[#213123]"
                   }`}
                 >
                   Income
                 </button>
               </div>
 
-              {/* Amount Input (Hero Financial Field) */}
-              <div className="p-4 bg-black/30 border border-white/[0.08] rounded-2xl focus-within:border-emerald-500/50 transition-colors">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
+              {/* Amount Input */}
+              <div className="p-4 bg-[#dbe8da] border border-[#c1d5bf] rounded-2xl focus-within:border-[#5e7d59] focus-within:ring-2 focus-within:ring-[#82a47b]/20 transition-all">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#4f6852] mb-1">
                   Amount
                 </label>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-2xl sm:text-3xl font-extrabold text-zinc-500">
+                  <span className="text-2xl sm:text-3xl font-extrabold text-[#5c755f]">
                     {currency}
                   </span>
                   <input
@@ -223,7 +224,7 @@ export function AddTransactionModal() {
                     onChange={(e) => setAmount(e.target.value)}
                     required
                     autoFocus
-                    className="w-full bg-transparent text-3xl sm:text-4xl font-black text-white placeholder-zinc-700 outline-none tabular-nums"
+                    className="w-full bg-transparent text-3xl sm:text-4xl font-black text-[#213123] placeholder-[#8ea890] outline-none tabular-nums"
                   />
                 </div>
               </div>
@@ -231,16 +232,15 @@ export function AddTransactionModal() {
               {/* Account Selector Section */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#4f6852]">
                     {type === "expense" ? "Pay From Account" : "Deposit To Account"}
                   </label>
                   <button
                     type="button"
                     onClick={() => setIsAddAccountOpen(true)}
-                    className="text-[10px] font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-0.5 transition-colors"
+                    className="text-[11px] font-semibold text-[#54734e] hover:text-[#384e34] transition-colors"
                   >
-                    <Plus className="w-3 h-3 stroke-[2.5]" />
-                    <span>New Account</span>
+                    + New Account
                   </button>
                 </div>
 
@@ -248,74 +248,70 @@ export function AddTransactionModal() {
                   <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1">
                     {accounts.map((acc: Account) => {
                       const isSelected = accountId === acc.id;
+                      const badgeMap: Record<string, { bg: string; text: string; label: string }> = {
+                        seabank: { bg: "bg-[#f35325]", text: "text-white", label: "SB" },
+                        gcash: { bg: "bg-[#0052cc]", text: "text-white", label: "GC" },
+                        bpi: { bg: "bg-[#850b18]", text: "text-[#fae084]", label: "BPI" },
+                        maya: { bg: "bg-[#090a0b] border border-[#22c55e]/50", text: "text-[#22c55e]", label: "MY" },
+                        landbank: { bg: "bg-[#094625]", text: "text-lime-200", label: "LB" },
+                        shopee: { bg: "bg-[#ee4d2d]", text: "text-white", label: "SP" },
+                        tiktok: { bg: "bg-[#000000] border border-[#00f2fe]/40", text: "text-white", label: "TT" },
+                      };
+                      const badge = badgeMap[acc.cardTheme] || { bg: "bg-[#54734e]", text: "text-white", label: "AC" };
+
                       return (
                         <button
                           key={acc.id}
                           type="button"
-                          onClick={() => setAccountId(acc.id ?? null)}
-                          style={{
-                            borderColor: isSelected ? acc.color : undefined,
-                            backgroundColor: isSelected ? `${acc.color}20` : undefined,
-                          }}
+                          onClick={() => setAccountId(acc.id)}
                           className={`flex items-center gap-2.5 p-2.5 rounded-2xl border text-left transition-all active:scale-95 ${
                             isSelected
-                              ? "text-white ring-2 ring-emerald-400/30 shadow-md shadow-emerald-500/10"
-                              : "border-white/[0.08] bg-white/[0.02] text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+                              ? "bg-[#54734e] text-white border-[#54734e] shadow-md shadow-[#54734e]/20"
+                              : "bg-[#d6e5d4] text-[#223324] border-[#c1d5bf] hover:bg-[#cadfc8]"
                           }`}
                         >
-                          <div
-                            className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
-                            style={{
-                              backgroundColor: `${acc.color}30`,
-                              color: acc.color,
-                            }}
+                          <span
+                            className={`w-7 h-7 rounded-lg ${badge.bg} ${badge.text} text-[10px] font-black flex items-center justify-center shrink-0 shadow-xs`}
                           >
-                            <CategoryIcon name={acc.icon} className="w-3.5 h-3.5" />
-                          </div>
+                            {badge.label}
+                          </span>
                           <div className="min-w-0">
-                            <span className="text-xs font-bold block truncate text-zinc-200">
+                            <p className="text-xs font-bold truncate leading-tight">
                               {acc.name}
-                            </span>
-                            <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold block truncate">
-                              {acc.type}
-                            </span>
+                            </p>
+                            <p
+                              className={`text-[10px] font-mono tabular-nums leading-tight mt-0.5 ${
+                                isSelected ? "text-white/80" : "text-[#5c755f]"
+                              }`}
+                            >
+                              {formatCurrency(acc.balance, currency)}
+                            </p>
                           </div>
                         </button>
                       );
                     })}
                   </div>
                 ) : (
-                  <div className="p-3 rounded-2xl bg-white/[0.02] border border-dashed border-white/[0.12] flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
-                        <Landmark className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-zinc-200">No accounts created</p>
-                        <p className="text-[10px] text-zinc-500 truncate">
-                          Add an account to assign this {type}
-                        </p>
-                      </div>
-                    </div>
+                  <div className="p-3 rounded-2xl bg-[#d8e7d6] border border-dashed border-[#b3cbb0] flex items-center justify-between gap-3">
+                    <p className="text-xs font-bold text-[#213123]">No accounts created</p>
                     <button
                       type="button"
                       onClick={() => setIsAddAccountOpen(true)}
-                      className="px-2.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-xs font-bold flex items-center gap-1 active:scale-95 transition-all shrink-0"
+                      className="px-2.5 py-1.5 rounded-xl bg-[#54734e] hover:bg-[#466141] text-white text-xs font-bold active:scale-95 transition-all shrink-0"
                     >
-                      <Plus className="w-3 h-3" />
-                      <span>Add</span>
+                      + Add
                     </button>
                   </div>
                 )}
               </div>
 
-              {/* Category Chips (Rounded-full pills with glowing selection) */}
+              {/* Category Chips */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#4f6852]">
                     Category
                   </label>
-                  <span className="text-[10px] text-zinc-500">
+                  <span className="text-[10px] text-[#5c755f]">
                     {categories?.length ?? 0} available
                   </span>
                 </div>
@@ -329,68 +325,53 @@ export function AddTransactionModal() {
                           key={cat.id}
                           type="button"
                           onClick={() => setCategoryId(cat.id ?? null)}
-                          style={{
-                            borderColor: isSelected ? cat.color : undefined,
-                            backgroundColor: isSelected ? `${cat.color}25` : undefined,
-                          }}
-                          className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all active:scale-95 ${
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all active:scale-95 ${
                             isSelected
-                              ? "text-white ring-2 ring-emerald-400/40 shadow-md shadow-emerald-500/10"
-                              : "border-white/[0.08] bg-white/[0.02] text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.06]"
+                              ? "bg-[#5f8059] text-white border-[#5e7d59] ring-2 ring-[#5e7d59]/40 shadow-sm"
+                              : "bg-[#d6e5d4] text-[#223324] border-[#c1d5bf] hover:bg-[#c6daca]"
                           }`}
                         >
-                          <div
-                            className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
-                            style={{
-                              backgroundColor: `${cat.color}35`,
-                              color: cat.color,
-                            }}
-                          >
-                            <CategoryIcon name={cat.icon} className="w-2.5 h-2.5" />
-                          </div>
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ backgroundColor: isSelected ? "#ffffff" : cat.color }}
+                          />
                           <span>{cat.name}</span>
                         </button>
                       );
                     })
                   ) : (
-                    <div className="text-xs text-zinc-500">Loading categories...</div>
+                    <div className="text-xs text-[#5c755f]">Loading categories...</div>
                   )}
                 </div>
               </div>
 
               {/* Date Input */}
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#4f6852] mb-1">
                   Date
                 </label>
-                <div className="relative flex items-center">
-                  <Calendar className="absolute left-3.5 w-4 h-4 text-zinc-500 pointer-events-none" />
-                  <input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    required
-                    className="w-full bg-black/40 border border-white/[0.08] rounded-xl pl-10 pr-4 py-2 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20"
-                  />
-                </div>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  required
+                  className="w-full bg-[#dbe8da] border border-[#c1d5bf] rounded-xl px-3.5 py-2 text-xs text-[#213123] focus:outline-none focus:border-[#5e7d59] focus:ring-2 focus:ring-[#82a47b]/20"
+                />
               </div>
 
               {/* Note / Description Input */}
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
-                  Note <span className="text-zinc-600 font-normal">(Optional)</span>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#4f6852] mb-1">
+                  Note <span className="text-[#7d9680] font-normal">(Optional)</span>
                 </label>
-                <div className="relative flex items-center">
-                  <FileText className="absolute left-3.5 w-4 h-4 text-zinc-500 pointer-events-none" />
-                  <input
-                    type="text"
-                    placeholder="e.g. Weekly grocery run"
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    maxLength={120}
-                    className="w-full bg-black/40 border border-white/[0.08] rounded-xl pl-10 pr-4 py-2 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20"
-                  />
-                </div>
+                <input
+                  type="text"
+                  placeholder="e.g. Weekly grocery run"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  maxLength={120}
+                  className="w-full bg-[#dbe8da] border border-[#c1d5bf] rounded-xl px-3.5 py-2 text-xs text-[#213123] placeholder-[#8ea890] focus:outline-none focus:border-[#5e7d59] focus:ring-2 focus:ring-[#82a47b]/20"
+                />
               </div>
 
               {/* Save Button */}
@@ -398,9 +379,8 @@ export function AddTransactionModal() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-3.5 px-4 rounded-2xl font-bold text-xs uppercase tracking-wider bg-gradient-to-r from-emerald-500 to-teal-400 text-zinc-950 hover:from-emerald-400 hover:to-teal-300 active:scale-[0.99] transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/20"
+                  className="w-full py-3.5 px-4 rounded-2xl font-bold text-xs uppercase tracking-wider bg-[#54734e] hover:bg-[#466141] text-white active:scale-[0.99] transition-all disabled:opacity-50 flex items-center justify-center shadow-lg shadow-[#54734e]/30"
                 >
-                  <Check className="w-4 h-4 stroke-[3]" />
                   {isSubmitting ? "Saving..." : "Add Transaction"}
                 </button>
               </div>

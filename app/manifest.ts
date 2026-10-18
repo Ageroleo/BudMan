@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Offline-first personal expense tracker and budget manager",
     start_url: "/",
     display: "standalone",
-    background_color: "#09090b",
-    theme_color: "#09090b",
+    background_color: "#edf4eb",
+    theme_color: "#edf4eb",
     icons: [
       {
         src: "/icon-192x192.png",
