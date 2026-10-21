@@ -3,18 +3,21 @@
 import React, { useState, useEffect } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, seedCategories, type Account } from "@/lib/db";
-import { useCurrency, formatCurrency } from "@/lib/format";
+import { useCurrency, formatCurrency, getLocalTimeString } from "@/lib/format";
 import { CreateAccountModal } from "./CreateAccountModal";
+import { CreateCategoryModal } from "./CreateCategoryModal";
 
 export function AddTransactionModal() {
   const currency = useCurrency();
   const [isOpen, setIsOpen] = useState(false);
   const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
+  const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
   const [type, setType] = useState<"expense" | "income">("expense");
   const [amount, setAmount] = useState<string>("");
   const [accountId, setAccountId] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [date, setDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [time, setTime] = useState<string>(() => getLocalTimeString());
   const [note, setNote] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -47,6 +50,7 @@ export function AddTransactionModal() {
     if (!date) {
       setDate(new Date().toISOString().slice(0, 10));
     }
+    setTime(getLocalTimeString());
     if (accounts && accounts.length > 0 && accountId === null) {
       setAccountId(accounts[0].id ?? null);
     }
@@ -63,6 +67,7 @@ export function AddTransactionModal() {
     setNote("");
     setErrorMessage(null);
     setDate(new Date().toISOString().slice(0, 10));
+    setTime(getLocalTimeString());
     if (accounts && accounts.length > 0) {
       setAccountId(accounts[0].id);
     }
@@ -99,6 +104,7 @@ export function AddTransactionModal() {
           categoryId,
           accountId: accountId ?? undefined,
           date,
+          time: time || undefined,
           note: note.trim() || undefined,
           createdAt: new Date(),
         });
@@ -256,6 +262,7 @@ export function AddTransactionModal() {
                         landbank: { bg: "bg-[#094625]", text: "text-lime-200", label: "LB" },
                         shopee: { bg: "bg-[#ee4d2d]", text: "text-white", label: "SP" },
                         tiktok: { bg: "bg-[#000000] border border-[#00f2fe]/40", text: "text-white", label: "TT" },
+                        cash: { bg: "bg-[#094625] border border-emerald-400/50", text: "text-emerald-300", label: "💵" },
                       };
                       const badge = badgeMap[acc.cardTheme] || { bg: "bg-[#54734e]", text: "text-white", label: "AC" };
 
@@ -311,9 +318,13 @@ export function AddTransactionModal() {
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-[#4f6852]">
                     Category
                   </label>
-                  <span className="text-[10px] text-[#5c755f]">
-                    {categories?.length ?? 0} available
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddCategoryOpen(true)}
+                    className="text-[11px] font-semibold text-[#54734e] hover:text-[#384e34] transition-colors"
+                  >
+                    + New Category
+                  </button>
                 </div>
 
                 <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto pr-1">
@@ -345,18 +356,31 @@ export function AddTransactionModal() {
                 </div>
               </div>
 
-              {/* Date Input */}
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#4f6852] mb-1">
-                  Date
-                </label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  required
-                  className="w-full bg-[#dbe8da] border border-[#c1d5bf] rounded-xl px-3.5 py-2 text-xs text-[#213123] focus:outline-none focus:border-[#5e7d59] focus:ring-2 focus:ring-[#82a47b]/20"
-                />
+              {/* Date & Time Inputs */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#4f6852] mb-1">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    required
+                    className="w-full bg-[#dbe8da] border border-[#c1d5bf] rounded-xl px-3 py-2 text-xs text-[#213123] focus:outline-none focus:border-[#5e7d59] focus:ring-2 focus:ring-[#82a47b]/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#4f6852] mb-1">
+                    Time
+                  </label>
+                  <input
+                    type="time"
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    className="w-full bg-[#dbe8da] border border-[#c1d5bf] rounded-xl px-3 py-2 text-xs text-[#213123] focus:outline-none focus:border-[#5e7d59] focus:ring-2 focus:ring-[#82a47b]/20"
+                  />
+                </div>
               </div>
 
               {/* Note / Description Input */}
@@ -397,6 +421,16 @@ export function AddTransactionModal() {
           setAccountId(newId);
           setIsAddAccountOpen(false);
           setErrorMessage(null);
+        }}
+      />
+
+      {/* Modal to create a category directly from the transaction flow */}
+      <CreateCategoryModal
+        isOpen={isAddCategoryOpen}
+        onClose={() => setIsAddCategoryOpen(false)}
+        onCreated={(newCatId) => {
+          setCategoryId(newCatId);
+          setIsAddCategoryOpen(false);
         }}
       />
     </>

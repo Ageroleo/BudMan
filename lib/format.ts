@@ -92,3 +92,29 @@ export function formatCurrency(
 
   return `${sign}${symbol}${formattedNum}`;
 }
+
+/**
+ * Returns current local time in 24-hour "HH:mm" format for <input type="time" />
+ */
+export function getLocalTimeString(): string {
+  const d = new Date();
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
+/**
+ * Formats "HH:mm" 24-hour string to friendly 12-hour display string (e.g. "9:30 AM")
+ */
+export function formatTime(timeStr?: string): string {
+  if (!timeStr) return "";
+  const parts = timeStr.split(":");
+  if (parts.length < 2) return timeStr;
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  if (isNaN(h) || isNaN(m)) return timeStr;
+  const ampm = h >= 12 ? "PM" : "AM";
+  const displayHours = h % 12 || 12;
+  const displayMinutes = String(m).padStart(2, "0");
+  return `${displayHours}:${displayMinutes} ${ampm}`;
+}

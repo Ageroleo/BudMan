@@ -5,6 +5,7 @@ import { db, type CardTheme, type AccountCategoryType, type Account } from "@/li
 import { useCurrency } from "@/lib/format";
 
 export const CARD_THEME_OPTIONS: { id: CardTheme; name: string; type: AccountCategoryType; color: string }[] = [
+  { id: "cash", name: "Cash", type: "cash", color: "#10b981" },
   { id: "seabank", name: "SeaBank", type: "bank", color: "#f35325" },
   { id: "gcash", name: "GCash", type: "wallet", color: "#0052cc" },
   { id: "bpi", name: "BPI", type: "bank", color: "#850b18" },
@@ -26,9 +27,9 @@ export function CreateAccountModal({
   onCreated,
 }: CreateAccountModalProps) {
   const currency = useCurrency();
-  const [selectedTheme, setSelectedTheme] = useState<CardTheme>("seabank");
-  const [name, setName] = useState("");
-  const [type, setType] = useState<AccountCategoryType>("bank");
+  const [selectedTheme, setSelectedTheme] = useState<CardTheme>("cash");
+  const [name, setName] = useState("Cash");
+  const [type, setType] = useState<AccountCategoryType>("cash");
   const [initialBalance, setInitialBalance] = useState("0");
   const [lastDigits, setLastDigits] = useState("");
   const [cardholder, setCardholder] = useState("");
@@ -37,26 +38,30 @@ export function CreateAccountModal({
 
   if (!isOpen) return null;
 
+  const isCash = selectedTheme === "cash";
+
   const handleThemeChange = (themeId: CardTheme) => {
     setSelectedTheme(themeId);
     const preset = CARD_THEME_OPTIONS.find((t) => t.id === themeId);
     if (preset) {
       setType(preset.type);
-      if (!name || CARD_THEME_OPTIONS.some((t) => name.toLowerCase().includes(t.id))) {
-        setName(`${preset.name} Account`);
+      if (!name || CARD_THEME_OPTIONS.some((t) => name.toLowerCase().includes(t.name.toLowerCase()) || name.toLowerCase().includes(t.id))) {
+        setName(themeId === "cash" ? "Cash" : `${preset.name} Account`);
       }
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const finalName = name.trim() || `${CARD_THEME_OPTIONS.find((t) => t.id === selectedTheme)?.name || "New"} Account`;
+    const finalName = name.trim() || (isCash ? "Cash" : `${CARD_THEME_OPTIONS.find((t) => t.id === selectedTheme)?.name || "New"} Account`);
 
     setIsSaving(true);
     setError(null);
     try {
       const parsedBalance = parseFloat(initialBalance) || 0;
-      const digits = (lastDigits.trim().replace(/\D/g, "") || "8888").slice(-4);
+      const digits = isCash
+        ? lastDigits.trim().toUpperCase()
+        : (lastDigits.trim().replace(/\D/g, "") || "8888").slice(-4);
       const uniqueId = `${selectedTheme}_${Date.now()}`;
 
       const newAccount: Account = {
@@ -65,16 +70,18 @@ export function CreateAccountModal({
         type,
         cardTheme: selectedTheme,
         balance: parsedBalance,
-        accountNumberMasked: `•••• ${digits}`,
-        expiryDate: "12/28",
-        cardholderName: cardholder.trim().toUpperCase() || "CARDHOLDER",
+        accountNumberMasked: isCash ? digits : `•••• ${digits}`,
+        expiryDate: isCash ? undefined : "12/28",
+        cardholderName: cardholder.trim().toUpperCase() || (isCash ? "" : "CARDHOLDER"),
         createdAt: new Date(),
       };
 
       await db.accounts.put(newAccount);
 
       // Reset form
-      setName("");
+      setName("Cash");
+      setSelectedTheme("cash");
+      setType("cash");
       setInitialBalance("0");
       setLastDigits("");
       setCardholder("");
@@ -102,7 +109,9 @@ export function CreateAccountModal({
       <div className="w-full max-w-sm bg-[#e5efe3] dark:bg-[#1a291e] border border-[#c1d5bf] dark:border-[#2f4835] rounded-3xl p-6 shadow-2xl space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-[#c1d5bf] dark:border-[#2f4835]">
-          <h3 className="text-sm font-bold text-[#213123] dark:text-white">Add Card Account</h3>
+          <h3 className="text-sm font-bold text-[#213123] dark:text-white">
+            {isCash ? "Add Cash Account" : "Add Card / Account"}
+          </h3>
           <button
             type="button"
             onClick={onClose}
@@ -119,10 +128,10 @@ export function CreateAccountModal({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-3.5 max-h-[75vh] overflow-y-auto pr-1">
-          {/* Card Skin Theme Picker */}
+          {/* Style & Skin Theme Picker */}
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wider text-[#4f6852] dark:text-[#a0bea2] mb-1.5">
-              Select Card Skin
+              Select Account Style
             </label>
             <div className="grid grid-cols-2 gap-1.5">
               {CARD_THEME_OPTIONS.map((theme) => {
@@ -138,10 +147,14 @@ export function CreateAccountModal({
                         : "bg-[#d6e5d4] dark:bg-[#233527] border-[#c1d5bf] dark:border-[#324a37] text-[#223324] dark:text-[#d3e5d0] hover:bg-[#c6daca]"
                     }`}
                   >
-                    <span
-                      className="w-3.5 h-3.5 rounded-full shrink-0 border border-white/20"
-                      style={{ backgroundColor: theme.color }}
-                    />
+                    {theme.id === "cash" ? (
+                      <span className="text-xs">💵</span>
+                    ) : (
+                      <span
+                        className="w-3.5 h-3.5 rounded-full shrink-0 border border-white/20"
+                        style={{ backgroundColor: theme.color }}
+                      />
+                    )}
                     <span className="truncate">{theme.name}</span>
                   </button>
                 );
@@ -155,7 +168,7 @@ export function CreateAccountModal({
             </label>
             <input
               type="text"
-              placeholder="e.g. SeaBank Primary, Maya Savings"
+              placeholder={isCash ? "e.g. Wallet, Emergency Fund, Cash" : "e.g. SeaBank Primary, Maya Savings"}
               value={name}
               onChange={(e) => {
                 setName(e.target.value);
@@ -169,24 +182,24 @@ export function CreateAccountModal({
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-[#4f6852] dark:text-[#a0bea2] mb-1">
-                Last 4 Digits
+                {isCash ? "Tag (Optional)" : "Last 4 Digits"}
               </label>
               <input
                 type="text"
-                maxLength={4}
-                placeholder="8821"
+                maxLength={isCash ? 10 : 4}
+                placeholder={isCash ? "e.g. WALLET" : "8821"}
                 value={lastDigits}
                 onChange={(e) => setLastDigits(e.target.value)}
-                className="w-full bg-[#dbe8da] dark:bg-[#233527] border border-[#c1d5bf] dark:border-[#324a37] rounded-xl px-3 py-2 text-xs text-[#213123] dark:text-white placeholder-[#8ea890] focus:outline-none focus:border-[#5e7d59] font-mono"
+                className="w-full bg-[#dbe8da] dark:bg-[#233527] border border-[#c1d5bf] dark:border-[#324a37] rounded-xl px-3 py-2 text-xs text-[#213123] dark:text-white placeholder-[#8ea890] focus:outline-none focus:border-[#5e7d59] font-mono uppercase"
               />
             </div>
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-[#4f6852] dark:text-[#a0bea2] mb-1">
-                Cardholder
+                {isCash ? "Owner (Optional)" : "Cardholder"}
               </label>
               <input
                 type="text"
-                placeholder="YOUR NAME"
+                placeholder={isCash ? "Optional" : "YOUR NAME"}
                 value={cardholder}
                 onChange={(e) => setCardholder(e.target.value)}
                 className="w-full bg-[#dbe8da] dark:bg-[#233527] border border-[#c1d5bf] dark:border-[#324a37] rounded-xl px-3 py-2 text-xs text-[#213123] dark:text-white placeholder-[#8ea890] focus:outline-none focus:border-[#5e7d59] uppercase"
@@ -218,7 +231,7 @@ export function CreateAccountModal({
               disabled={isSaving}
               className="w-full py-3 rounded-2xl bg-[#54734e] hover:bg-[#466141] text-white font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-[#54734e]/30 active:scale-95 disabled:opacity-50"
             >
-              {isSaving ? "Saving..." : "Add Card to Carousel"}
+              {isSaving ? "Saving..." : isCash ? "Add Cash Account" : "Add Account to Carousel"}
             </button>
           </div>
         </form>

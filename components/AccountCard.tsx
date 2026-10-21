@@ -83,6 +83,44 @@ function VisaLogo({ className = "h-5 text-white" }: { className?: string }) {
   );
 }
 
+// Banknote Currency Emblem
+function BanknoteEmblem() {
+  return (
+    <svg className="w-10 h-7 rounded-[4px] shadow-sm shrink-0" viewBox="0 0 40 28" fill="none">
+      <defs>
+        <linearGradient id="cash-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#10b981" />
+          <stop offset="50%" stopColor="#059669" />
+          <stop offset="100%" stopColor="#047857" />
+        </linearGradient>
+      </defs>
+      <rect width="40" height="28" rx="4" fill="url(#cash-grad)" stroke="#34d399" strokeWidth="0.8" />
+      <circle cx="20" cy="14" r="8" stroke="#a7f3d0" strokeWidth="0.8" strokeDasharray="1.5 1.5" fill="#065f46" />
+      <circle cx="20" cy="14" r="5" fill="#10b981" />
+      <path d="M18 14h4M20 11v6" stroke="#ffffff" strokeWidth="1.2" strokeLinecap="round" />
+      <circle cx="5" cy="6" r="1.5" fill="#a7f3d0" opacity="0.8" />
+      <circle cx="35" cy="6" r="1.5" fill="#a7f3d0" opacity="0.8" />
+      <circle cx="5" cy="22" r="1.5" fill="#a7f3d0" opacity="0.8" />
+      <circle cx="35" cy="22" r="1.5" fill="#a7f3d0" opacity="0.8" />
+    </svg>
+  );
+}
+
+// Cash Mint Badge
+function CashMintBadge({ className = "" }: { className?: string }) {
+  return (
+    <div
+      className={`w-7 h-7 rounded-lg bg-emerald-950/60 border border-emerald-400/30 text-emerald-300 flex items-center justify-center shadow-sm ${className}`}
+      title="Cash"
+    >
+      <svg className="w-3.5 h-3.5 text-emerald-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="2" y="6" width="20" height="12" rx="2" />
+        <circle cx="12" cy="12" r="2.5" />
+      </svg>
+    </div>
+  );
+}
+
 export function AccountCard({
   account,
   isMasked = false,
@@ -487,6 +525,84 @@ export function AccountCard({
               </div>
             </div>
             <MastercardLogo className="h-6 sm:h-7" />
+          </div>
+        </div>
+      );
+
+    case "cash":
+    default:
+      return (
+        <div
+          onClick={onClick}
+          className={`aspect-[1.586/1] w-full rounded-2xl overflow-hidden p-5 relative shadow-xl text-white select-none transition-all duration-300 ${
+            isActive ? "ring-2 ring-emerald-400 scale-[1.01]" : "hover:scale-[1.005]"
+          } bg-gradient-to-br from-[#0c5031] via-[#083822] to-[#031d11] border border-emerald-500/25 shadow-[#083822]/35 ${className}`}
+        >
+          {/* Guilloché / Banknote geometric watermark & currency grid */}
+          <div className="absolute inset-0 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:16px_16px] opacity-15 pointer-events-none" />
+          <div className="absolute -top-16 -right-16 w-52 h-52 bg-emerald-500/15 rounded-full blur-2xl pointer-events-none" />
+          <svg className="absolute -bottom-10 -right-10 w-48 h-48 pointer-events-none opacity-10 text-emerald-300" viewBox="0 0 100 100" fill="none" stroke="currentColor">
+            <circle cx="50" cy="50" r="45" strokeWidth="1.5" strokeDasharray="3 3" />
+            <circle cx="50" cy="50" r="35" strokeWidth="1" />
+            <circle cx="50" cy="50" r="25" strokeWidth="1.5" strokeDasharray="2 2" />
+            <circle cx="50" cy="50" r="15" strokeWidth="1" />
+          </svg>
+
+          {/* Vertical holographic security foil strip */}
+          <div className="absolute top-0 bottom-0 left-[26%] w-7 pointer-events-none overflow-hidden opacity-30 flex flex-col items-center justify-around select-none">
+            <div className="w-full h-full bg-gradient-to-b from-transparent via-emerald-400/20 to-transparent flex flex-col justify-around items-center py-2 text-[8px] font-black font-mono text-emerald-200">
+              <span>₱</span>
+              <span>•</span>
+              <span>₱</span>
+              <span>•</span>
+              <span>₱</span>
+            </div>
+          </div>
+
+          {/* Card Top: Cash label */}
+          <div className="relative z-10 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-emerald-400/20 border border-emerald-400/40 text-emerald-300 flex items-center justify-center font-black text-sm shadow-sm">
+                💵
+              </div>
+              <span className="text-xl font-black tracking-tight text-white">
+                {account.name || "Cash"}
+              </span>
+            </div>
+          </div>
+
+          {/* Card Middle: Banknote Emblem & Balance */}
+          <div className="relative z-10 mt-3 flex items-center justify-between">
+            <BanknoteEmblem />
+            <div className="text-right">
+              <span className="text-[10px] uppercase font-bold text-emerald-200/80 block tracking-wider">
+                Available Balance
+              </span>
+              <span className="text-lg sm:text-xl font-black tabular-nums tracking-tight text-white drop-shadow-sm">
+                {isMasked ? `${currency}••••••` : formatCurrency(account.balance, currency)}
+              </span>
+            </div>
+          </div>
+
+          {/* Card Bottom: Number, Holder & Network */}
+          <div className="absolute bottom-5 left-5 right-5 z-10 flex items-end justify-between">
+            <div>
+              {account.accountNumberMasked &&
+                account.accountNumberMasked !== "CASH" &&
+                account.accountNumberMasked !== "PHYSICAL CASH" && (
+                  <div className="font-mono text-xs sm:text-sm font-bold tracking-widest text-emerald-200/90 drop-shadow-sm uppercase">
+                    {account.accountNumberMasked}
+                  </div>
+                )}
+              {account.cardholderName &&
+                account.cardholderName !== "CASH ON HAND" &&
+                account.cardholderName !== "CASH" && (
+                  <div className="text-[10px] font-semibold text-emerald-100/75 uppercase tracking-wider mt-1">
+                    <span className="truncate max-w-[140px]">{account.cardholderName}</span>
+                  </div>
+                )}
+            </div>
+            <CashMintBadge />
           </div>
         </div>
       );

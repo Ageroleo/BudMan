@@ -1,7 +1,7 @@
 import Dexie, { type Table } from "dexie";
 
-export type CardTheme = "seabank" | "gcash" | "bpi" | "maya" | "landbank" | "shopee" | "tiktok";
-export type AccountCategoryType = "bank" | "wallet" | "ecommerce";
+export type CardTheme = "seabank" | "gcash" | "bpi" | "maya" | "landbank" | "shopee" | "tiktok" | "cash";
+export type AccountCategoryType = "bank" | "wallet" | "ecommerce" | "cash";
 
 export interface Account {
   id: string; // e.g., 'gcash', 'maya', 'bpi', 'seabank', 'landbank', 'shopee', 'tiktok'
@@ -22,6 +22,7 @@ export interface Transaction {
   categoryId: number;
   accountId?: string;
   date: string;
+  time?: string;
   note?: string;
   createdAt: Date;
 }
@@ -183,6 +184,93 @@ export async function deleteAccount(accountId: string): Promise<void> {
       if (tx.id !== undefined) {
         await db.transactions.update(tx.id, { accountId: undefined });
       }
+    }
+  });
+}
+
+/**
+ * Deletes a category and safely detaches transactions associated with it.
+ */
+export async function deleteCategory(categoryId: number): Promise<void> {
+  await db.transaction("rw", db.categories, db.transactions, async () => {
+    await db.categories.delete(categoryId);
+  });
+}
+
+/**
+ * Safely updates an existing transaction and reconciles account balances.
+ */
+export async function updateTransaction(
+  txId: number,
+  updatedData: {
+    amount: number;
+    type: "expense" | "income";
+    categoryId: number;
+    accountId?: string;
+    date: string;
+    time?: string;
+    note?: string;
+  }
+): Promise<void> {
+  await db.transaction("rw", db.transactions, db.accounts, async () => {
+    const oldTx = await db.transactions.get(txId);
+    if (!oldTx) throw new Error("Transaction not found");
+
+    // 1. Revert previous impact on account balance if an account was linked
+    if (oldTx.accountId) {
+      const oldAcc = await db.accounts.get(oldTx.accountId);
+      if (oldAcc) {
+        const revertedBal =
+          oldTx.type === "expense"
+            ? (oldAcc.balance || 0) + oldTx.amount
+            : (oldAcc.balance || 0) - oldTx.amount;
+        await db.accounts.update(oldTx.accountId, { balance: revertedBal });
+      }
+    }
+
+    // 2. Apply new impact on account balance if an account is linked
+    if (updatedData.accountId) {
+      const newAcc = await db.accounts.get(updatedData.accountId);
+      if (newAcc) {
+        const newBal =
+          updatedData.type === "expense"
+            ? (newAcc.balance || 0) - updatedData.amount
+            : (newAcc.balance || 0) + updatedData.amount;
+        await db.accounts.update(updatedData.accountId, { balance: newBal });
+      }
+    }
+
+    // 3. Update transaction record
+    await db.transactions.update(txId, {
+      amount: updatedData.amount,
+      type: updatedData.type,
+      categoryId: updatedData.categoryId,
+      accountId: updatedData.accountId,
+      date: updatedData.date,
+      time: updatedData.time || undefined,
+      note: updatedData.note?.trim() || undefined,
+    });
+  });
+}
+
+/**
+ * Safely deletes a transaction and reconciles the associated account's balance.
+ */
+export async function deleteTransaction(txId: number): Promise<void> {
+  await db.transaction("rw", db.transactions, db.accounts, async () => {
+    const tx = await db.transactions.get(txId);
+    if (tx) {
+      if (tx.accountId) {
+        const acc = await db.accounts.get(tx.accountId);
+        if (acc) {
+          const revertedBal =
+            tx.type === "expense"
+              ? (acc.balance || 0) + tx.amount
+              : (acc.balance || 0) - tx.amount;
+          await db.accounts.update(tx.accountId, { balance: revertedBal });
+        }
+      }
+      await db.transactions.delete(txId);
     }
   });
 }

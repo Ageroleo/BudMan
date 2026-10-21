@@ -4,12 +4,16 @@ import React, { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, type Category } from "@/lib/db";
 import { useCurrency, formatCurrency } from "@/lib/format";
+import { CreateCategoryModal } from "./CreateCategoryModal";
 
 export function BudgetProgress() {
   const currency = useCurrency();
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
   const [editBudgetValue, setEditBudgetValue] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
+
+  // State for Category creation
+  const [isCreateCategoryOpen, setIsCreateCategoryOpen] = useState(false);
 
   // State for "Add Category Budget" Modal
   const [isAddBudgetOpen, setIsAddBudgetOpen] = useState(false);
@@ -269,15 +273,24 @@ export function BudgetProgress() {
           <h3 className="text-xs font-bold uppercase tracking-wider text-[#4f6852]">
             Category Budgets {list.length > 0 ? `(${list.length})` : ""}
           </h3>
-          {unbudgetedCategories.length > 0 && (
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={handleOpenAddBudget}
+              onClick={() => setIsCreateCategoryOpen(true)}
               className="text-xs font-semibold text-[#54734e] hover:text-[#384e34] transition-colors"
             >
-              + Set Budget
+              + New Category
             </button>
-          )}
+            {unbudgetedCategories.length > 0 && (
+              <button
+                type="button"
+                onClick={handleOpenAddBudget}
+                className="text-xs font-semibold text-[#54734e] hover:text-[#384e34] transition-colors"
+              >
+                + Set Budget
+              </button>
+            )}
+          </div>
         </div>
 
         {list.length > 0 ? (
@@ -454,9 +467,18 @@ export function BudgetProgress() {
 
             <form onSubmit={handleCreateCategoryBudget} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#4f6852] mb-2">
-                  Select Category
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#4f6852]">
+                    Select Category
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateCategoryOpen(true)}
+                    className="text-[11px] font-semibold text-[#54734e] hover:text-[#384e34] transition-colors"
+                  >
+                    + New Category
+                  </button>
+                </div>
                 <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
                   {unbudgetedCategories.map((cat) => {
                     const isSelected = selectedAddCatId === cat.id;
@@ -528,6 +550,16 @@ export function BudgetProgress() {
           </div>
         </div>
       )}
+
+      {/* Create Category Modal */}
+      <CreateCategoryModal
+        isOpen={isCreateCategoryOpen}
+        onClose={() => setIsCreateCategoryOpen(false)}
+        onCreated={(newCatId) => {
+          setSelectedAddCatId(newCatId);
+          setIsCreateCategoryOpen(false);
+        }}
+      />
     </div>
   );
 }

@@ -2,8 +2,9 @@
 
 import React, { useState, useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, type Category, type Account, type Transaction } from "@/lib/db";
-import { useCurrency, formatCurrency } from "@/lib/format";
+import { db, deleteTransaction, type Category, type Account, type Transaction } from "@/lib/db";
+import { useCurrency, formatCurrency, formatTime } from "@/lib/format";
+import { EditTransactionModal } from "./EditTransactionModal";
 
 interface TransactionListProps {
   filterAccountId?: string | null;
@@ -12,6 +13,7 @@ interface TransactionListProps {
 export function TransactionList({ filterAccountId }: TransactionListProps) {
   const currency = useCurrency();
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   const data = useLiveQuery(async () => {
     const [transactions, categories, accounts] = await Promise.all([
@@ -35,10 +37,18 @@ export function TransactionList({ filterAccountId }: TransactionListProps) {
       ? transactions.filter((tx) => tx.accountId === filterAccountId)
       : transactions;
 
-    // Sort by date descending, then id descending
+    // Sort by date descending, then time descending, then id descending
     const sorted = [...filtered].sort((a, b) => {
       const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
       if (dateDiff !== 0) return dateDiff;
+      if (b.time && a.time) {
+        const timeDiff = b.time.localeCompare(a.time);
+        if (timeDiff !== 0) return timeDiff;
+      } else if (b.time && !a.time) {
+        return -1;
+      } else if (!b.time && a.time) {
+        return 1;
+      }
       return (b.id ?? 0) - (a.id ?? 0);
     });
 
@@ -49,11 +59,13 @@ export function TransactionList({ filterAccountId }: TransactionListProps) {
     };
   }, [filterAccountId]);
 
-  const handleDelete = async (id?: number) => {
+  const handleDelete = async (e: React.MouseEvent, id?: number) => {
+    e.stopPropagation();
     if (id === undefined) return;
+    if (!confirm("Are you sure you want to delete this transaction? Account balance will be adjusted.")) return;
     setDeletingId(id);
     try {
-      await db.transactions.delete(id);
+      await deleteTransaction(id);
     } catch (err) {
       console.error("Failed to delete transaction:", err);
     } finally {
@@ -176,7 +188,8 @@ export function TransactionList({ filterAccountId }: TransactionListProps) {
               return (
                 <div
                   key={tx.id}
-                  className={`group relative flex items-center justify-between p-3.5 bg-[#e2ede1] hover:bg-[#d9e7d8] border border-[#c8dbc6] rounded-2xl transition-all shadow-sm ${
+                  onClick={() => setEditingTransaction(tx)}
+                  className={`group relative flex items-center justify-between p-3.5 bg-[#e2ede1] hover:bg-[#d9e7d8] border border-[#c8dbc6] rounded-2xl transition-all shadow-sm cursor-pointer ${
                     isDeleting ? "opacity-40 scale-95" : ""
                   }`}
                 >
@@ -219,6 +232,20 @@ export function TransactionList({ filterAccountId }: TransactionListProps) {
                           </>
                         )}
 
+                        {/* Time Badge */}
+                        {tx.time && (
+                          <>
+                            <span className="text-[#8ba78e]">•</span>
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#486345] tabular-nums">
+                              <svg className="w-2.5 h-2.5 opacity-75" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <polyline points="12 6 12 12 16 14" />
+                              </svg>
+                              <span>{formatTime(tx.time)}</span>
+                            </span>
+                          </>
+                        )}
+
                         <span className="text-[#8ba78e]">•</span>
                         <span
                           className={`text-[10px] font-semibold uppercase px-1.5 py-0.2 rounded ${
@@ -244,15 +271,34 @@ export function TransactionList({ filterAccountId }: TransactionListProps) {
                       {formatCurrency(tx.amount, currency)}
                     </span>
 
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(tx.id)}
-                      disabled={isDeleting}
-                      aria-label="Delete transaction"
-                      className="px-2 py-1 rounded-lg text-xs font-semibold text-[#7d9680] hover:text-[#b34033] hover:bg-[#b34033]/10 active:scale-95 transition-all opacity-80 group-hover:opacity-100"
-                    >
-                      ✕
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingTransaction(tx);
+                        }}
+                        aria-label="Edit transaction"
+                        title="Edit transaction"
+                        className="p-1.5 rounded-lg text-xs font-semibold text-[#5c755f] hover:text-[#213123] hover:bg-[#c8dbc6] active:scale-95 transition-all opacity-80 group-hover:opacity-100"
+                      >
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                          <path d="m15 5 4 4" />
+                        </svg>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => handleDelete(e, tx.id)}
+                        disabled={isDeleting}
+                        aria-label="Delete transaction"
+                        title="Delete transaction"
+                        className="px-2 py-1 rounded-lg text-xs font-semibold text-[#7d9680] hover:text-[#b34033] hover:bg-[#b34033]/10 active:scale-95 transition-all opacity-80 group-hover:opacity-100"
+                      >
+                        ✕
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -260,6 +306,13 @@ export function TransactionList({ filterAccountId }: TransactionListProps) {
           </div>
         </div>
       ))}
+
+      {/* Edit Transaction Modal */}
+      <EditTransactionModal
+        transaction={editingTransaction}
+        isOpen={editingTransaction !== null}
+        onClose={() => setEditingTransaction(null)}
+      />
     </div>
   );
 }

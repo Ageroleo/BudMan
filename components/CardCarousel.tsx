@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { db, deleteAccount, type Account, type Transaction } from "@/lib/db";
-import { useCurrency, formatCurrency } from "@/lib/format";
+import { useCurrency, formatCurrency, getLocalTimeString } from "@/lib/format";
 import { AccountCard } from "./AccountCard";
 import { CreateAccountModal } from "./CreateAccountModal";
 
@@ -40,6 +40,7 @@ export function CardCarousel({
   // Form states for Transfer
   const [transferTargetId, setTransferTargetId] = useState<string>("");
   const [transferAmount, setTransferAmount] = useState("");
+  const [transferFee, setTransferFee] = useState("0");
   const [transferNote, setTransferNote] = useState("");
 
   // Account Deletion states
@@ -124,6 +125,7 @@ export function CardCarousel({
           categoryId: 7, // Salary / Deposit
           accountId: targetAcc.id,
           date: new Date().toISOString().slice(0, 10),
+          time: getLocalTimeString(),
           note: depositNote.trim() || `Deposit to ${targetAcc.name}`,
           createdAt: new Date(),
         });
@@ -138,13 +140,19 @@ export function CardCarousel({
     }
   };
 
-  // Handle Quick Transfer Between Cards
+  // Handle Quick Transfer Between Cards / Accounts
   const handleTransferSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setActionError(null);
     const amt = parseFloat(transferAmount);
     if (isNaN(amt) || amt <= 0) {
       setActionError("Please enter a valid transfer amount");
+      return;
+    }
+
+    const fee = parseFloat(transferFee) || 0;
+    if (fee < 0) {
+      setActionError("Transfer fee cannot be negative");
       return;
     }
 
@@ -161,29 +169,47 @@ export function CardCarousel({
       return;
     }
 
-    if (fromAcc.balance < amt) {
-      setActionError(`Insufficient balance in ${fromAcc.name}`);
+    const totalDeduction = amt + fee;
+    if (fromAcc.balance < totalDeduction) {
+      setActionError(
+        `Insufficient balance in ${fromAcc.name}. You need ${formatCurrency(totalDeduction, currency)} (${formatCurrency(amt, currency)} + ${formatCurrency(fee, currency)} fee), but only have ${formatCurrency(fromAcc.balance, currency)}.`
+      );
       return;
     }
 
     try {
       await db.transaction("rw", db.accounts, db.transactions, async () => {
-        // Deduct from sender
-        await db.accounts.update(fromAcc.id, { balance: fromAcc.balance - amt });
-        // Add to receiver
+        // Deduct transfer amount + fee from sender
+        await db.accounts.update(fromAcc.id, { balance: fromAcc.balance - totalDeduction });
+        // Add transfer amount to receiver
         await db.accounts.update(toAcc.id, { balance: toAcc.balance + amt });
 
         // Record transfer transactions
         const today = new Date().toISOString().slice(0, 10);
+        const currentTime = getLocalTimeString();
         await db.transactions.add({
           amount: amt,
           type: "expense",
           categoryId: 5, // Transfer / Utilities
           accountId: fromAcc.id,
           date: today,
+          time: currentTime,
           note: transferNote.trim() || `Transfer to ${toAcc.name}`,
           createdAt: new Date(),
         });
+
+        if (fee > 0) {
+          await db.transactions.add({
+            amount: fee,
+            type: "expense",
+            categoryId: 5, // Transfer fee
+            accountId: fromAcc.id,
+            date: today,
+            time: currentTime,
+            note: `Transfer Fee (${fromAcc.name} → ${toAcc.name})`,
+            createdAt: new Date(),
+          });
+        }
 
         await db.transactions.add({
           amount: amt,
@@ -191,6 +217,7 @@ export function CardCarousel({
           categoryId: 7, // Income / Deposit
           accountId: toAcc.id,
           date: today,
+          time: currentTime,
           note: transferNote.trim() || `Transfer from ${fromAcc.name}`,
           createdAt: new Date(),
         });
@@ -198,6 +225,7 @@ export function CardCarousel({
 
       setIsTransferOpen(false);
       setTransferAmount("");
+      setTransferFee("0");
       setTransferNote("");
       setTransferTargetId("");
     } catch (err) {
@@ -251,17 +279,17 @@ export function CardCarousel({
             onClick={() => setIsCreateAccountOpen(true)}
             className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#54734e] hover:bg-[#435e3e] text-white text-xs font-bold shadow-xs transition-all active:scale-95"
           >
-            <span>+ Add Card</span>
+            <span>+ Add Account</span>
           </button>
         </div>
 
         {/* Empty State Banner */}
         <div className="p-7 rounded-3xl bg-[#e2ede1]/70 dark:bg-[#1c291e]/70 border-2 border-dashed border-[#c4d7c2] dark:border-[#384e3b] text-center space-y-3">
           <p className="text-sm font-bold text-[#213123] dark:text-[#f0f6ef]">
-            No card accounts active
+            No accounts active
           </p>
           <p className="text-xs text-[#5e7d59] dark:text-[#9bb897] max-w-xs mx-auto leading-relaxed">
-            All card accounts have been removed. Add your digital bank or wallet card (GCash, Maya, SeaBank, BPI, Landbank) to manage balances.
+            All accounts have been removed. Add your physical cash, digital wallet, or bank account (Cash, GCash, Maya, SeaBank, BPI, Landbank) to manage balances.
           </p>
           <div className="pt-1">
             <button
@@ -269,7 +297,7 @@ export function CardCarousel({
               onClick={() => setIsCreateAccountOpen(true)}
               className="px-4 py-2 rounded-2xl bg-[#54734e] hover:bg-[#435e3e] text-white text-xs font-bold transition-all shadow-md active:scale-95"
             >
-              + Add New Card
+              + Add New Account
             </button>
           </div>
         </div>
@@ -419,6 +447,7 @@ export function CardCarousel({
             setActionError(null);
             const otherAcc = accounts.find((a) => a.id !== currentAccount.id);
             setTransferTargetId(otherAcc ? otherAcc.id : "");
+            setTransferFee("0");
             setIsTransferOpen(true);
           }}
           className="flex items-center justify-center py-2.5 px-2 rounded-2xl bg-[#e2ede1] dark:bg-[#1e2c20] hover:bg-[#d6e5d4] dark:hover:bg-[#253628] border border-[#c4d7c2] dark:border-[#384e3b] text-[#213123] dark:text-[#f0f6ef] text-xs font-bold transition-all active:scale-95 shadow-xs"
@@ -434,7 +463,7 @@ export function CardCarousel({
           }}
           className="flex items-center justify-center py-2.5 px-2 rounded-2xl bg-[#e2ede1] dark:bg-[#1e2c20] hover:bg-[#d6e5d4] dark:hover:bg-[#253628] border border-[#c4d7c2] dark:border-[#384e3b] text-[#213123] dark:text-[#f0f6ef] text-xs font-bold transition-all active:scale-95 shadow-xs"
         >
-          <span>Card Info</span>
+          <span>{currentAccount.cardTheme === "cash" ? "Cash Info" : "Card Info"}</span>
         </button>
       </div>
 
@@ -582,7 +611,7 @@ export function CardCarousel({
                   required
                   className="w-full bg-[#edf4eb] dark:bg-[#162218] border border-[#c1d5bf] dark:border-[#384e3b] rounded-xl px-3.5 py-2.5 text-xs text-[#213123] dark:text-[#f0f6ef] focus:outline-none focus:border-[#54734e]"
                 >
-                  <option value="">Select Destination Card</option>
+                  <option value="">Select Destination Account</option>
                   {accounts
                     .filter((a) => a.id !== currentAccount.id)
                     .map((acc) => (
@@ -604,8 +633,7 @@ export function CardCarousel({
                   <input
                     type="number"
                     step="0.01"
-                    min="1"
-                    max={currentAccount.balance}
+                    min="0.01"
                     placeholder="500"
                     value={transferAmount}
                     onChange={(e) => setTransferAmount(e.target.value)}
@@ -615,9 +643,55 @@ export function CardCarousel({
                 </div>
               </div>
 
+              {/* Transfer Fee Field with Presets */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#5e7d59] dark:text-[#9bb897]">
+                    Transfer Fee
+                  </label>
+                  <span className="text-[10px] text-[#5e7d59] dark:text-[#9bb897]">
+                    (e.g. InstaPay / bank fee)
+                  </span>
+                </div>
+                <div className="relative flex items-center mb-1.5">
+                  <span className="absolute left-3.5 text-xs font-bold text-[#5e7d59]">
+                    {currency}
+                  </span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0"
+                    value={transferFee}
+                    onChange={(e) => setTransferFee(e.target.value)}
+                    className="w-full bg-[#edf4eb] dark:bg-[#162218] border border-[#c1d5bf] dark:border-[#384e3b] rounded-xl pl-8 pr-3.5 py-2 text-xs text-[#213123] dark:text-[#f0f6ef] placeholder-[#82a47b] focus:outline-none focus:border-[#54734e] tabular-nums"
+                  />
+                </div>
+                {/* Quick fee presets */}
+                <div className="flex items-center gap-1.5">
+                  {["0", "10", "15", "25"].map((preset) => {
+                    const isSelected = transferFee === preset;
+                    return (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => setTransferFee(preset)}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all border ${
+                          isSelected
+                            ? "bg-[#54734e] text-white border-[#54734e] shadow-xs"
+                            : "bg-[#edf4eb] dark:bg-[#162218] text-[#5e7d59] dark:text-[#9bb897] border-[#c1d5bf] dark:border-[#384e3b] hover:bg-[#dce9da] dark:hover:bg-[#253628]"
+                        }`}
+                      >
+                        {preset === "0" ? "Free (₱0)" : `+${currency}${preset}`}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-[#5e7d59] dark:text-[#9bb897] mb-1">
-                  Transfer Description
+                  Transfer Description (Optional)
                 </label>
                 <input
                   type="text"
@@ -627,6 +701,46 @@ export function CardCarousel({
                   className="w-full bg-[#edf4eb] dark:bg-[#162218] border border-[#c1d5bf] dark:border-[#384e3b] rounded-xl px-3.5 py-2 text-xs text-[#213123] dark:text-[#f0f6ef] placeholder-[#82a47b] focus:outline-none focus:border-[#54734e]"
                 />
               </div>
+
+              {/* Dynamic Fee & Total Deduction Summary */}
+              {parseFloat(transferAmount) > 0 && (
+                <div className="p-3 rounded-2xl bg-[#dce9da]/70 dark:bg-[#162218] border border-[#c1d5bf] dark:border-[#384e3b] space-y-1.5 text-xs">
+                  <div className="flex justify-between text-[#5e7d59] dark:text-[#9bb897]">
+                    <span>Amount Sent</span>
+                    <span className="font-mono font-bold text-[#213123] dark:text-[#f0f6ef]">
+                      {formatCurrency(parseFloat(transferAmount) || 0, currency)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-[#5e7d59] dark:text-[#9bb897]">
+                    <span>Transfer Fee</span>
+                    <span className="font-mono font-bold text-[#b34033] dark:text-[#f87171]">
+                      {parseFloat(transferFee) > 0
+                        ? `+${formatCurrency(parseFloat(transferFee) || 0, currency)}`
+                        : "Free (₱0.00)"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between pt-1 border-t border-[#c1d5bf]/60 dark:border-[#384e3b]/60 font-bold text-[#213123] dark:text-white">
+                    <span>Total Deducted</span>
+                    <span
+                      className={`font-mono text-sm tabular-nums ${
+                        (parseFloat(transferAmount) || 0) + (parseFloat(transferFee) || 0) > currentAccount.balance
+                          ? "text-[#b34033] dark:text-[#f87171]"
+                          : "text-[#1f3d23] dark:text-[#82a47b]"
+                      }`}
+                    >
+                      {formatCurrency(
+                        (parseFloat(transferAmount) || 0) + (parseFloat(transferFee) || 0),
+                        currency
+                      )}
+                    </span>
+                  </div>
+                  {(parseFloat(transferAmount) || 0) + (parseFloat(transferFee) || 0) > currentAccount.balance && (
+                    <p className="text-[10px] text-[#b34033] dark:text-[#f87171] font-semibold pt-0.5">
+                      ⚠️ Total deduction exceeds available balance
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="pt-2">
                 <button
@@ -667,21 +781,27 @@ export function CardCarousel({
 
             <div className="space-y-3 text-xs text-[#213123] dark:text-[#f0f6ef]">
               <div className="flex justify-between py-1 border-b border-[#c1d5bf]/50 dark:border-[#384e3b]/50">
-                <span className="text-[#5e7d59] dark:text-[#9bb897]">Cardholder</span>
-                <span className="font-bold">{currentAccount.cardholderName || "JUAN DELA CRUZ"}</span>
+                <span className="text-[#5e7d59] dark:text-[#9bb897]">
+                  {currentAccount.cardTheme === "cash" ? "Custodian / Owner" : "Cardholder"}
+                </span>
+                <span className="font-bold">{currentAccount.cardholderName || (currentAccount.cardTheme === "cash" ? "CASH ON HAND" : "JUAN DELA CRUZ")}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-[#c1d5bf]/50 dark:border-[#384e3b]/50">
-                <span className="text-[#5e7d59] dark:text-[#9bb897]">Card Number</span>
+                <span className="text-[#5e7d59] dark:text-[#9bb897]">
+                  {currentAccount.cardTheme === "cash" ? "Identifier" : "Card Number"}
+                </span>
                 <span className="font-mono font-bold">{currentAccount.accountNumberMasked}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-[#c1d5bf]/50 dark:border-[#384e3b]/50">
-                <span className="text-[#5e7d59] dark:text-[#9bb897]">Card Type</span>
+                <span className="text-[#5e7d59] dark:text-[#9bb897]">Account Type</span>
                 <span className="capitalize font-bold">{currentAccount.type}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-[#c1d5bf]/50 dark:border-[#384e3b]/50">
-                <span className="text-[#5e7d59] dark:text-[#9bb897]">Expires</span>
-                <span className="font-mono font-bold">{currentAccount.expiryDate || "12/28"}</span>
-              </div>
+              {currentAccount.expiryDate && (
+                <div className="flex justify-between py-1 border-b border-[#c1d5bf]/50 dark:border-[#384e3b]/50">
+                  <span className="text-[#5e7d59] dark:text-[#9bb897]">Expires</span>
+                  <span className="font-mono font-bold">{currentAccount.expiryDate}</span>
+                </div>
+              )}
               <div className="flex justify-between py-1">
                 <span className="text-[#5e7d59] dark:text-[#9bb897]">Current Balance</span>
                 <span className="font-bold text-[#1f3d23] dark:text-[#82a47b]">

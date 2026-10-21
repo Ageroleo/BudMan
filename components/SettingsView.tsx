@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, deleteAccount, type Account } from "@/lib/db";
+import { db, deleteAccount, deleteCategory, type Account, type Category } from "@/lib/db";
 import {
   exportToJson,
   exportToCsv,
@@ -18,6 +18,7 @@ import {
 import { useInstallPrompt } from "./InstallPrompt";
 import { useTheme, type ThemeMode } from "@/lib/theme";
 import { CreateAccountModal } from "./CreateAccountModal";
+import { CreateCategoryModal } from "./CreateCategoryModal";
 
 export function SettingsView() {
   const currentCurrency = useCurrency();
@@ -38,6 +39,28 @@ export function SettingsView() {
   const [accountToDeleteId, setAccountToDeleteId] = useState<string | null>(null);
   const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
   const accounts = useLiveQuery(() => db.accounts.toArray(), []);
+
+  // Category management states
+  const [categoryToDeleteId, setCategoryToDeleteId] = useState<number | null>(null);
+  const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
+  const categories = useLiveQuery(() => db.categories.toArray(), []);
+
+  const handleConfirmDeleteCategory = async (id: number) => {
+    try {
+      await deleteCategory(id);
+      setCategoryToDeleteId(null);
+      setStatusMessage({
+        type: "success",
+        text: "Category successfully removed.",
+      });
+    } catch (err) {
+      console.error("Failed to delete category:", err);
+      setStatusMessage({
+        type: "error",
+        text: "Failed to remove category.",
+      });
+    }
+  };
 
   const handleConfirmDeleteAccount = async (id: string) => {
     try {
@@ -268,9 +291,9 @@ export function SettingsView() {
       <section className="p-5 sm:p-6 bg-[#e2ede1] dark:bg-[#1c291e] border border-[#c4d7c2] dark:border-[#384e3b] rounded-[28px] shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-bold text-[#213123] dark:text-[#f0f6ef]">Card Accounts</h3>
+            <h3 className="text-sm font-bold text-[#213123] dark:text-[#f0f6ef]">Accounts & Cards</h3>
             <p className="text-[11px] text-[#5e7d59] dark:text-[#9bb897]">
-              Manage your connected cards & wallets ({accounts?.length ?? 0} active)
+              Manage your connected cards, wallets & cash accounts ({accounts?.length ?? 0} active)
             </p>
           </div>
           <button
@@ -278,7 +301,7 @@ export function SettingsView() {
             onClick={() => setIsAddAccountOpen(true)}
             className="px-3 py-1.5 rounded-full bg-[#54734e] hover:bg-[#435e3e] text-white text-xs font-bold transition-all shadow-xs"
           >
-            + Add Card
+            + Add Account
           </button>
         </div>
 
@@ -340,6 +363,91 @@ export function SettingsView() {
             <p className="text-xs text-[#5e7d59] dark:text-[#9bb897]">
               No card accounts currently connected.
             </p>
+          </div>
+        )}
+      </section>
+
+      {/* SECTION: Categories Management */}
+      <section className="p-5 sm:p-6 bg-[#e2ede1] dark:bg-[#1c291e] border border-[#c4d7c2] dark:border-[#384e3b] rounded-[28px] shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-[#213123] dark:text-[#f0f6ef]">Categories</h3>
+            <p className="text-[11px] text-[#5e7d59] dark:text-[#9bb897]">
+              Manage expense & income categories ({categories?.length ?? 0} active)
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsAddCategoryOpen(true)}
+            className="px-3 py-1.5 rounded-full bg-[#54734e] hover:bg-[#435e3e] text-white text-xs font-bold transition-all shadow-xs"
+          >
+            + Add Category
+          </button>
+        </div>
+
+        {categories && categories.length > 0 ? (
+          <div className="space-y-2 pt-1 max-h-72 overflow-y-auto pr-1">
+            {categories.map((cat: Category) => {
+              const isDeletingThis = categoryToDeleteId === cat.id;
+              return (
+                <div
+                  key={cat.id}
+                  className="flex items-center justify-between p-3.5 rounded-2xl bg-[#edf4eb] dark:bg-[#162218] border border-[#c4d7c2] dark:border-[#384e3b]"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 pr-3">
+                    <span
+                      className="w-3.5 h-3.5 rounded-full shrink-0 border border-white/20 shadow-xs"
+                      style={{ backgroundColor: cat.color }}
+                    />
+                    <div className="min-w-0">
+                      <span className="text-xs font-bold text-[#213123] dark:text-[#f0f6ef] truncate block">
+                        {cat.name}
+                      </span>
+                      {cat.budgetMonthly && cat.budgetMonthly > 0 ? (
+                        <span className="text-[10px] text-[#5e7d59] dark:text-[#9bb897] block">
+                          Budget: {formatCurrency(cat.budgetMonthly, currentCurrency)}/mo
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-[#5e7d59]/70 dark:text-[#9bb897]/70 block">
+                          No monthly budget limit
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {isDeletingThis ? (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setCategoryToDeleteId(null)}
+                        className="px-2.5 py-1 rounded-xl text-xs font-semibold text-[#5e7d59] hover:bg-[#dce9da] dark:hover:bg-[#253628]"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => cat.id !== undefined && handleConfirmDeleteCategory(cat.id)}
+                        className="px-2.5 py-1 rounded-xl bg-[#b34033] hover:bg-[#993429] text-white text-xs font-bold transition-all shadow-xs active:scale-95"
+                      >
+                        Confirm
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setCategoryToDeleteId(cat.id ?? null)}
+                      className="px-2.5 py-1 rounded-xl border border-[#b34033]/40 text-[#b34033] dark:text-[#f87171] hover:bg-[#b34033]/10 text-xs font-bold transition-all"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-4 rounded-2xl bg-[#edf4eb] dark:bg-[#162218] border border-dashed border-[#c4d7c2] dark:border-[#384e3b] text-center">
+            <p className="text-xs text-[#5e7d59] dark:text-[#9bb897]">No categories created.</p>
           </div>
         )}
       </section>
@@ -485,7 +593,19 @@ export function SettingsView() {
           setIsAddAccountOpen(false);
           setStatusMessage({
             type: "success",
-            text: "Card account added successfully.",
+            text: "Account added successfully.",
+          });
+        }}
+      />
+
+      <CreateCategoryModal
+        isOpen={isAddCategoryOpen}
+        onClose={() => setIsAddCategoryOpen(false)}
+        onCreated={() => {
+          setIsAddCategoryOpen(false);
+          setStatusMessage({
+            type: "success",
+            text: "Category added successfully.",
           });
         }}
       />
