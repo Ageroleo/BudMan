@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, seedDefaults, type Category } from "@/lib/db";
 import { useCurrency } from "@/lib/format";
+import { useActiveAvatar } from "@/lib/avatar";
 import { CardCarousel } from "@/components/CardCarousel";
 import { TransactionList } from "@/components/TransactionList";
 import { AddTransactionModal } from "@/components/AddTransactionModal";
@@ -20,6 +21,13 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<NavTab>("transactions");
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const currency = useCurrency();
+  const { avatar, setAvatar, allAvatars } = useActiveAvatar();
+
+  const handleNextAvatar = () => {
+    const currentIndex = allAvatars.findIndex((a) => a.id === avatar.id);
+    const nextIdx = (currentIndex + 1) % allAvatars.length;
+    setAvatar(allAvatars[nextIdx].id);
+  };
 
   // Seed default categories and accounts if empty
   useEffect(() => {
@@ -74,10 +82,32 @@ export default function DashboardPage() {
       <main className="w-full max-w-md md:max-w-xl px-4 sm:px-6 pt-safe">
         {/* App Header */}
         <header className="flex items-center justify-between py-4 border-b border-[#c4d7c2] dark:border-[#384e3b] mb-5">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-black tracking-tight text-[#213123] dark:text-white">
-              BudMan
-            </h1>
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={handleNextAvatar}
+              title={`BudMan Mascot: ${avatar.name} (${avatar.mood}) — Click to switch mood!`}
+              className="relative group transition-transform active:scale-90 focus:outline-none"
+            >
+              <img
+                src={avatar.src}
+                alt={`BudMan Mascot - ${avatar.name}`}
+                width={36}
+                height={36}
+                className="w-9 h-9 rounded-full shadow-xs object-cover border-2 border-[#54734e]/50 dark:border-[#a3c99f]/50 group-hover:border-[#54734e] transition-all"
+              />
+              <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#54734e] text-white text-[8px] font-bold flex items-center justify-center border-2 border-background">
+                ★
+              </span>
+            </button>
+            <div>
+              <h1 className="text-xl font-black tracking-tight text-[#213123] dark:text-white leading-none">
+                BudMan
+              </h1>
+              <span className="text-[10px] text-[#5e7d59] dark:text-[#9bb897] font-semibold">
+                {avatar.mood}
+              </span>
+            </div>
           </div>
 
           {/* Right Header: Theme Toggle, Install Button & Live Offline Status Badge */}

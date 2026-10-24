@@ -161,11 +161,20 @@ export function AddTransactionModal() {
 
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 pb-3 pt-1 border-b border-[#c1d5bf]">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#6b8c65] animate-pulse" />
-                <h2 className="text-base font-bold text-[#213123] tracking-tight">
-                  New Transaction
-                </h2>
+              <div className="flex items-center gap-2.5">
+                <img
+                  src={type === "expense" ? "/mascot/backpack.png" : "/mascot/coin.png"}
+                  alt="BudMan mascot"
+                  className="w-8 h-8 object-contain shrink-0 transition-all duration-200"
+                />
+                <div>
+                  <h2 className="text-base font-bold text-[#213123] tracking-tight leading-none">
+                    New Transaction
+                  </h2>
+                  <p className="text-[11px] text-[#5c755f] mt-0.5 font-medium">
+                    {type === "expense" ? "Tracking spending with BudMan" : "Adding income to your budget"}
+                  </p>
+                </div>
               </div>
               <button
                 type="button"

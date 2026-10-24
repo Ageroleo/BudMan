@@ -418,10 +418,17 @@ export function BudgetProgress() {
         ) : (
           /* Empty State */
           <div className="p-6 bg-[#e2ede1] border border-dashed border-[#b8d2b6] rounded-3xl text-center space-y-3">
+            <div className="flex justify-center">
+              <img
+                src="/mascot/backpack.png"
+                alt="BudMan Budget Companion"
+                className="w-20 h-20 object-contain drop-shadow-sm"
+              />
+            </div>
             <div>
               <p className="text-sm font-bold text-[#213123]">No Category Budgets Set</p>
               <p className="text-xs text-[#5c755f] max-w-xs mx-auto mt-1">
-                You haven&apos;t set spending limits for any categories yet. Add a budget to monitor and control your monthly expenses.
+                You haven&apos;t set spending limits for any categories yet. Add a budget to monitor and control your monthly expenses with BudMan.
               </p>
             </div>
             {unbudgetedCategories.length > 0 && (

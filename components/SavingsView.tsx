@@ -171,18 +171,25 @@ export function SavingsView() {
       <section aria-label="Savings Goals Overview">
         <div className="relative p-5 sm:p-6 bg-[#e2ede1] dark:bg-[#1c291e] border border-[#c4d7c2] dark:border-[#384e3b] rounded-[28px] shadow-sm overflow-hidden">
           <div className="flex items-center justify-between mb-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-extrabold text-[#213123] dark:text-[#f0f6ef] tracking-tight">
-                  Savings Goals
-                </h2>
-                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-[#d6e5d4] text-[#213123] border border-[#c4d7c2] dark:bg-[#2e4331] dark:text-[#c9dec8] dark:border-[#3d5341]">
-                  {goals?.length ?? 0} active
-                </span>
+            <div className="flex items-center gap-3">
+              <img
+                src="/mascot/savings.png"
+                alt="BudMan Savings"
+                className="w-12 h-12 object-contain shrink-0 drop-shadow-xs"
+              />
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-extrabold text-[#213123] dark:text-[#f0f6ef] tracking-tight">
+                    Savings Goals
+                  </h2>
+                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-[#d6e5d4] text-[#213123] border border-[#c4d7c2] dark:bg-[#2e4331] dark:text-[#c9dec8] dark:border-[#3d5341]">
+                    {goals?.length ?? 0} active
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#5e7d59] dark:text-[#9bb897] font-medium mt-0.5">
+                  Timeline savings planner & calculator
+                </p>
               </div>
-              <p className="text-[11px] text-[#5e7d59] dark:text-[#9bb897] font-medium mt-0.5">
-                Timeline savings planner & calculator
-              </p>
             </div>
 
             <button
@@ -356,7 +363,23 @@ export function SavingsView() {
                 </div>
 
                 {/* Calculated Savings Breakdown Box */}
-                {!isCompleted && (
+                {isCompleted ? (
+                  <div className="p-3 bg-[#cde0cb] dark:bg-[#1f3823] border border-[#b8d2b6] dark:border-[#2e5233] rounded-2xl flex items-center gap-3">
+                    <img
+                      src="/mascot/cheer.png"
+                      alt="Goal Achieved"
+                      className="w-10 h-10 object-contain shrink-0"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-[#1f3d23] dark:text-[#a1e5ab] block">
+                        🎉 Goal Reached!
+                      </span>
+                      <span className="text-[11px] text-[#38593c] dark:text-[#c4e3c9]">
+                        Target of {formatCurrency(target, currency)} completed!
+                      </span>
+                    </div>
+                  </div>
+                ) : (
                   <div className="p-3.5 bg-[#dbe8da] dark:bg-[#162218]/70 border border-[#c1d5bf] dark:border-[#384e3b] rounded-2xl space-y-2.5">
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-[#213123] dark:text-[#f0f6ef] font-semibold">
@@ -409,14 +432,19 @@ export function SavingsView() {
           })
         ) : (
           /* Empty State */
-          <div className="p-8 bg-[#e2ede1] dark:bg-[#1c291e] border border-dashed border-[#c4d7c2] dark:border-[#384e3b] rounded-[32px] text-center space-y-4">
+          <div className="p-8 bg-[#e2ede1] dark:bg-[#1c291e] border border-dashed border-[#c4d7c2] dark:border-[#384e3b] rounded-[32px] text-center flex flex-col items-center space-y-3">
+            <img
+              src="/mascot/savings.png"
+              alt="BudMan Savings"
+              className="w-24 h-auto object-contain drop-shadow-sm mb-1"
+            />
             <div className="space-y-1">
               <h3 className="text-base font-bold text-[#213123] dark:text-[#f0f6ef]">Start a Savings Goal</h3>
               <p className="text-xs text-[#5e7d59] dark:text-[#9bb897] max-w-sm mx-auto leading-relaxed">
                 Plan for a vacation, new gadgets, or an emergency fund. Set your target amount and timeline, and we&apos;ll calculate how much to save per day, week, and month.
               </p>
             </div>
-            <div>
+            <div className="pt-2">
               <button
                 type="button"
                 onClick={handleOpenCreate}

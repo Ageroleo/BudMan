@@ -149,12 +149,19 @@ export function TransactionList({ filterAccountId }: TransactionListProps) {
 
   if (transactions.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-10 text-center rounded-[28px] bg-[#e2ede1] border border-[#c4d7c2] shadow-sm">
-        <h3 className="text-base font-bold text-[#213123] mb-1">No Transactions Recorded</h3>
-        <p className="text-xs text-[#4f6852] max-w-xs mb-4 leading-relaxed">
+      <div className="flex flex-col items-center justify-center p-8 text-center rounded-[28px] bg-[#e2ede1] dark:bg-[#1c291e] border border-[#c4d7c2] dark:border-[#384e3b] shadow-sm">
+        <img
+          src="/mascot/thinking.png"
+          alt="BudMan Mascot Thinking"
+          className="w-24 h-auto object-contain mb-3 drop-shadow-sm"
+        />
+        <h3 className="text-base font-bold text-[#213123] dark:text-[#f0f6ef] mb-1">
+          No Transactions Recorded
+        </h3>
+        <p className="text-xs text-[#4f6852] dark:text-[#9bb897] max-w-xs leading-relaxed">
           {filterAccountId
             ? "No activity recorded for this specific account yet."
-            : "Tap the + button below to log your first income or expense record."}
+            : "BudMan is ready! Tap the + button below to log your first income or expense record."}
         </p>
       </div>
     );

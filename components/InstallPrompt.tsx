@@ -97,14 +97,21 @@ export function InstallBanner() {
 
   return (
     <div className="mb-4 p-3.5 bg-[#e2ede1] dark:bg-[#1c291e] border border-[#c4d7c2] dark:border-[#384e3b] rounded-2xl flex items-center justify-between gap-3 shadow-md shadow-[#54734e]/10 animate-in fade-in duration-300">
-      <div className="min-w-0">
-        <h4 className="text-xs font-bold text-[#213123] dark:text-[#f0f6ef] flex items-center gap-1.5">
-          Install BudMan App
-          <span className="text-[10px] text-[#54734e] dark:text-[#82a47b] font-medium">Offline Ready</span>
-        </h4>
-        <p className="text-[11px] text-[#5e7d59] dark:text-[#9bb897] truncate">
-          {isIOS ? "Tap Share then Add to Home Screen" : "Install on your home screen for instant access"}
-        </p>
+      <div className="flex items-center gap-3 min-w-0">
+        <img
+          src="/mascot/hero.png"
+          alt="BudMan Mascot"
+          className="w-11 h-14 object-contain shrink-0 drop-shadow-xs"
+        />
+        <div className="min-w-0">
+          <h4 className="text-xs font-bold text-[#213123] dark:text-[#f0f6ef] flex items-center gap-1.5">
+            Install BudMan App
+            <span className="text-[10px] text-[#54734e] dark:text-[#82a47b] font-medium">Offline Ready</span>
+          </h4>
+          <p className="text-[11px] text-[#5e7d59] dark:text-[#9bb897] truncate">
+            {isIOS ? "Tap Share then Add to Home Screen" : "Install on your home screen for instant access"}
+          </p>
+        </div>
       </div>
 
       <div className="flex items-center gap-1.5 shrink-0">

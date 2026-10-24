@@ -32,8 +32,14 @@ export const metadata: Metadata = {
     title: "BudMan",
   },
   icons: {
-    icon: "/icon.svg",
-    apple: "/icon-192x192.png",
+    icon: [
+      { url: "/icon.png?v=budman", type: "image/png", sizes: "512x512" },
+      { url: "/favicon.ico?v=budman", sizes: "any" },
+    ],
+    shortcut: "/icon.png?v=budman",
+    apple: [
+      { url: "/apple-touch-icon.png?v=budman", sizes: "180x180", type: "image/png" },
+    ],
   },
 };
 
@@ -49,6 +55,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased light`}
     >
       <head>
+        <link rel="icon" href="/icon.png?v=budman" type="image/png" sizes="512x512" />
+        <link rel="icon" href="/favicon.ico?v=budman" sizes="any" />
+        <link rel="shortcut icon" href="/icon.png?v=budman" type="image/png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=budman" sizes="180x180" />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('budman_theme');var isDark=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);var r=document.documentElement;if(isDark){r.classList.add('dark');r.classList.remove('light');r.setAttribute('data-theme','dark');r.style.colorScheme='dark';}else{r.classList.remove('dark');r.classList.add('light');r.setAttribute('data-theme','light');r.style.colorScheme='light';}}catch(e){}})();`,
